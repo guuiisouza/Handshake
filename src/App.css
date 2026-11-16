@@ -31,3 +31,28 @@
   cursor: pointer;
   box-shadow: 0 0 12px var(--roxo);
 }
+.contagem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 3px solid var(--roxo);
+  padding: 16px 28px;
+  box-shadow: 0 0 12px var(--roxo);
+}
+
+.contagem strong {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 2.2rem;
+}
+
+.barra {
+  width: 100%;
+  max-width: 320px;
+  height: 16px;
+  border: 2px solid var(--roxo);
+}
+
+.barra-cheia {
+  height: 100%;
+  background: var(--roxo);
+}
