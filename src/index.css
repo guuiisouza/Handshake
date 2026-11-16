@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=Inter:wght@400;600&display=swap');
+
+:root {
+  --preto: #0b0710;
+  --obsidiana: #1a1024;
+  --roxo: #b44cff;
+  --roxo-claro: #e6c8ff;
+  --texto: #f3eaff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--preto);
+  color: var(--texto);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+}
+
+h1, h2, button {
+  font-family: 'Pixelify Sans', sans-serif;
+}
