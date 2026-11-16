@@ -56,3 +56,31 @@
   height: 100%;
   background: var(--roxo);
 }
+.mapa {
+  width: 100%;
+  max-width: 360px;
+}
+
+.rota {
+  fill: none;
+  stroke: var(--roxo);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+}
+
+.ponto {
+  fill: var(--roxo-claro);
+}
+
+.cidade {
+  fill: var(--texto);
+  font-size: 12px;
+  font-family: 'Pixelify Sans', sans-serif;
+}
+
+.aviao {
+  fill: var(--roxo-claro);
+  font-size: 22px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
