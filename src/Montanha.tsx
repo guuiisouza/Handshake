@@ -43,6 +43,9 @@ function Montanha({ subida, vao, nuvemNosVaos }: Props) {
   const picoEscala = useTransform(subida, [0, 1], [1, 1 + PICO_CRESCE])
   const atrasY = useTransform(subida, [0, 1], ['0%', '7%'])
   const atrasEscala = useTransform(subida, [0, 1], [1, 1.03])
+  // no finalzinho da galeria a montanha se dissolve no escuro, antes de o fundo
+  // fixo voltar a rolar: assim ela nunca aparece cortada na troca de cena
+  const presenca = useTransform(subida, [0.86, 0.98], [1, 0])
 
   // Posiciona a nuvem entre o cume (vão = 0) e o meio da tela (vão = 1).
   // Tudo calculado, sem medir a página: só um transform por quadro.
@@ -88,7 +91,7 @@ function Montanha({ subida, vao, nuvemNosVaos }: Props) {
   }, [posicionarNuvem, nuvemNosVaos])
 
   return (
-    <div ref={raiz} className="montanha" aria-hidden="true">
+    <motion.div ref={raiz} className="montanha" style={{ opacity: presenca }} aria-hidden="true">
       {/* cordilheira de trás, mais apagada (profundidade) */}
       <motion.div className="montanha-camada" style={calmo ? undefined : { y: atrasY, scale: atrasEscala }}>
         <svg className="montanha-desenho" viewBox="0 -60 1000 460" preserveAspectRatio="xMidYMax slice">
@@ -146,7 +149,7 @@ function Montanha({ subida, vao, nuvemNosVaos }: Props) {
           <Nevoa centroX={-4} centroY={0.5} sensibilidade={SENSIBILIDADE_GALERIA} />
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

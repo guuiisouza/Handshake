@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Abertura from './Abertura'
 import Voo from './Voo'
 import Galeria from './Galeria'
+import Revelacao from './Revelacao'
 import Instalacao, { estaInstalado } from './Instalacao'
 import './App.css'
 
@@ -27,6 +28,8 @@ function App() {
       <Voo />
 
       <Galeria />
+
+      <Revelacao />
     </main>
   )
 }

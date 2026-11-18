@@ -33,6 +33,16 @@ uniform float u_agitacao;  // 0 = calma, 1 = bem agitada
 uniform vec2 u_ponteiro;   // dedo/mouse (0 a 1)
 uniform float u_forca;     // força do redemoinho perto do dedo/mouse
 uniform vec2 u_centro;     // onde fica a obsidiana (0 a 1)
+uniform vec3 u_cor0;       // cor escura
+uniform vec3 u_cor1;       // cor média
+uniform vec3 u_cor2;       // cor clara (brilhos)
+uniform vec2 u_fluxo;      // para onde a fumaça anda (padrão: para cima)
+uniform float u_cheio;     // 0 = fiapos de névoa; mais alto = mais denso (vapor)
+uniform float u_brilhos;   // quantidade de partículas brilhantes (1 = normal)
+uniform vec3 u_cor0b;      // cores de cima (quando a cor muda com a altura)
+uniform vec3 u_cor1b;
+uniform vec3 u_cor2b;
+uniform float u_vertical;  // 1 = as cores vão das de baixo para as de cima
 
 float sorteio(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -77,7 +87,7 @@ void main() {
 
   // Tinta na água: o ruído é dobrado duas vezes sobre si mesmo
   vec2 s = p * 1.6;
-  s.y -= t * 0.05;                           // a fumaça sobe
+  s -= u_fluxo * t * 0.05;                   // a fumaça anda (sobe, no padrão)
   vec2 q = vec2(camadas(s + vec2(0.0, t * 0.04)),
                 camadas(s + vec2(5.2, 1.3) - t * 0.03));
   float dobra = 3.2 + u_agitacao * 1.5;
@@ -86,7 +96,8 @@ void main() {
   float f = camadas(s + 3.0 * r);
 
   // fiapos: só as partes mais densas aparecem
-  float fiapos = smoothstep(0.36, 0.9, f) * (0.55 + 0.45 * clamp(length(r), 0.0, 1.0));
+  // (no modo líquido quase tudo aparece, como um líquido correndo)
+  float fiapos = smoothstep(mix(0.36, 0.05, u_cheio), 0.9, f) * (0.55 + 0.45 * clamp(length(r), 0.0, 1.0));
 
   // Onde a névoa aparece: densa nas bordas e embaixo, rala em volta da obsidiana
   float distancia = length(p - centro);
@@ -94,16 +105,19 @@ void main() {
   float baixo = smoothstep(0.6, 0.0, uv.y);
   float borda = smoothstep(0.28, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
   float mascara = clamp(0.35 + baixo * 0.75 + borda * 0.5, 0.0, 1.0) * mix(0.03, 1.0, longe);
+  mascara = mix(mascara, 1.0, u_cheio);
 
   // Cores: violeta escuro -> violeta -> lilás onde a luz atrás da pedra alcança
-  vec3 escuro = vec3(0.16, 0.06, 0.32);
-  vec3 violeta = vec3(0.52, 0.26, 0.95);
-  vec3 lilas = vec3(0.85, 0.74, 1.0);
+  // (com u_vertical, as cores de baixo viram as de cima conforme a altura)
+  float subida = u_vertical * smoothstep(0.08, 0.72, uv.y);
+  vec3 escuro = mix(u_cor0, u_cor0b, subida);
+  vec3 violeta = mix(u_cor1, u_cor1b, subida);
+  vec3 lilas = mix(u_cor2, u_cor2b, subida);
   vec3 cor = mix(escuro, violeta, clamp(f * f * 2.2, 0.0, 1.0));
   cor = mix(cor, lilas, clamp(length(q) - 0.6, 0.0, 1.0) * 0.5);
   cor = mix(cor, lilas, exp(-distancia * distancia * 3.0) * 0.35);
   float densidade = fiapos * mascara;
-  float alfa = densidade * 0.85;
+  float alfa = densidade * mix(0.85, 1.0, u_cheio);
 
   // Partículas brilhantes bem pequenas, subindo e piscando.
   // Elas aparecem quase só dentro da fumaça (como pó brilhando na tinta),
@@ -118,7 +132,7 @@ void main() {
     vec2 lugar = vec2(sorteio(celula + 7.1), sorteio(celula + 3.7)) * 0.6 + 0.2;
     float pisca = 0.5 + 0.5 * sin(t * 2.0 + h * 60.0);
     float naFumaca = 0.06 + 0.94 * smoothstep(0.04, 0.3, densidade);
-    brilho = smoothstep(0.13, 0.0, length(fract(g) - lugar)) * pisca * naFumaca;
+    brilho = smoothstep(0.13, 0.0, length(fract(g) - lugar)) * pisca * naFumaca * u_brilhos;
   }
 
   // cor "pré-multiplicada" pela transparência (o canvas é transparente)
@@ -129,10 +143,33 @@ void main() {
 type Opcoes = {
   estatico: boolean          // true = "Reduzir movimento": um quadro só, parado
   sensibilidade?: number     // quanto rolagem/toque/mouse agitam a fumaça (1 = normal)
+  aparencia?: Aparencia      // cores e movimento (padrão: a névoa violeta do site)
   centro: [number, number]   // posição da obsidiana na tela (0 a 1, de baixo para cima)
 }
 
 export type ControleNevoa = { parar: () => void }
+
+// Aparência: as cores (escura, média, clara), para onde a fumaça anda,
+// se é névoa em fiapos (cheio 0) ou um líquido cheio (cheio 1), e as partículas.
+// coresTopo (opcional): as cores vão de "cores" (embaixo) para "coresTopo" (em cima)
+export type Aparencia = { cores: number[][]; coresTopo?: number[][]; fluxo: [number, number]; cheio: number; brilhos: number }
+
+// A névoa violeta do site (abertura, mapa, galeria): o padrão
+export const NEVOA_VIOLETA: Aparencia = {
+  cores: [[0.16, 0.06, 0.32], [0.52, 0.26, 0.95], [0.85, 0.74, 1.0]],
+  fluxo: [0, 1],
+  cheio: 0,
+  brilhos: 1,
+}
+// Vapor do choque: laranja embaixo (perto da lava) e a névoa violeta do site em
+// cima (um pouco mais claro); sobe mais depressa e é mais denso que a névoa comum
+export const VAPOR: Aparencia = {
+  cores: [[0.45, 0.1, 0.03], [1.0, 0.6, 0.22], [1.0, 0.9, 0.7]],
+  coresTopo: [[0.24, 0.09, 0.48], [0.72, 0.4, 1.0], [0.92, 0.84, 1.0]],
+  fluxo: [0, 3],
+  cheio: 0.35,
+  brilhos: 0.6,
+}
 
 function compilar(gl: WebGLRenderingContext, tipo: number, codigo: string) {
   const shader = gl.createShader(tipo)
@@ -150,7 +187,7 @@ function compilar(gl: WebGLRenderingContext, tipo: number, codigo: string) {
 // (para mostrar a névoa simples) e devolve null.
 export function iniciarNevoaWebGL(
   canvas: HTMLCanvasElement,
-  { estatico, centro, sensibilidade = 1 }: Opcoes,
+  { estatico, centro, sensibilidade = 1, aparencia = NEVOA_VIOLETA }: Opcoes,
   aoFalhar: () => void,
 ): ControleNevoa | null {
   const gl = canvas.getContext('webgl', {
@@ -198,6 +235,18 @@ export function iniciarNevoaWebGL(
     centro: gl.getUniformLocation(programa, 'u_centro'),
   }
   gl.uniform2f(u.centro, centro[0], centro[1])
+  const cor = (nome: string, [r, g, b]: number[]) => gl.uniform3f(gl.getUniformLocation(programa, nome), r, g, b)
+  cor('u_cor0', aparencia.cores[0])
+  cor('u_cor1', aparencia.cores[1])
+  cor('u_cor2', aparencia.cores[2])
+  gl.uniform2f(gl.getUniformLocation(programa, 'u_fluxo'), aparencia.fluxo[0], aparencia.fluxo[1])
+  gl.uniform1f(gl.getUniformLocation(programa, 'u_cheio'), aparencia.cheio)
+  gl.uniform1f(gl.getUniformLocation(programa, 'u_brilhos'), aparencia.brilhos)
+  const topo = aparencia.coresTopo ?? aparencia.cores
+  cor('u_cor0b', topo[0])
+  cor('u_cor1b', topo[1])
+  cor('u_cor2b', topo[2])
+  gl.uniform1f(gl.getUniformLocation(programa, 'u_vertical'), aparencia.coresTopo ? 1 : 0)
 
   // Estado da animação
   let tempo = 12

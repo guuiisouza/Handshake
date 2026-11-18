@@ -1,0 +1,381 @@
+/* ---------- Revelação final ----------
+   Duas cenas altas com a tela grudada (como a abertura e o mapa): a rolagem
+   conduz o handshake e o nascimento da obsidiana. */
+
+.rev {
+  position: relative;
+  /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  background: var(--preto);
+  text-align: center;
+}
+
+.rev-handshake { height: 380vh; }
+.rev-obsidiana { height: 300vh; }
+
+/* telas de toque: passagens mais curtas, como no resto do site */
+@media (pointer: coarse) {
+  .rev-handshake { height: 300vh; }
+  .rev-obsidiana { height: 240vh; }
+}
+
+.rev-palco {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100lvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rev-nevoa {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rev-conteudo {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3.5vh, 36px);
+  padding: 24px;
+}
+
+/* ---------- Títulos e textos ---------- */
+
+.rev-cabecalho {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rev-titulo {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: clamp(2.2rem, 10vw, 4.2rem);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--texto);
+  text-shadow: 0 0 28px rgba(var(--luz), 0.45);
+}
+
+.rev-subtitulo {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.6);
+}
+
+.rev-texto {
+  max-width: min(88vw, 32rem);
+  font-size: clamp(1.05rem, 4.2vw, 1.3rem);
+  line-height: 1.6;
+  color: var(--texto);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 16px var(--preto);
+}
+
+/* ---------- Handshake: computadores, linha e pacotes ---------- */
+
+.tcp {
+  --pc: clamp(84px, 24vw, 170px); /* largura de cada computador */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  width: min(88vw, 640px);
+}
+
+.tcp-computador {
+  position: relative;
+  width: var(--pc);
+}
+
+.tcp-computador svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6));
+}
+
+/* o da direita é o mesmo desenho espelhado: os dois ficam virados um para o outro */
+.tcp-computador.espelhado {
+  transform: scaleX(-1);
+}
+
+/* glow violeta em volta da tela (a tela fica entre 37% e 83% da largura
+   e entre 18% e 55% da altura do desenho) */
+.tcp-tela-luz {
+  position: absolute;
+  left: 22%;
+  width: 76%;
+  top: 0;
+  height: 72%;
+  background: radial-gradient(closest-side, rgba(var(--luz-clara), 0.55), rgba(var(--luz), 0.35) 50%, transparent);
+  pointer-events: none;
+}
+
+/* a linha fica na altura do meio da tela dos computadores */
+.tcp-linha {
+  position: relative;
+  height: 2px;
+  margin-top: calc(var(--pc) * 22 / 30 * 0.36);
+  background: rgba(var(--luz), 0.22);
+}
+
+/* conexão acesa: luz violeta contínua entre os dois */
+.tcp-conexao {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(var(--luz-clara), 0.9), #ffffff, rgba(var(--luz-clara), 0.9));
+  box-shadow: 0 0 10px rgba(var(--luz), 0.9), 0 0 26px rgba(var(--luz), 0.5);
+}
+
+/* pulso lento da luz da conexão */
+.tcp-conexao::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10px;
+  bottom: -10px;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(var(--luz), 0.45), transparent);
+  animation: pulso-conexao 3.2s ease-in-out infinite;
+}
+
+@keyframes pulso-conexao {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+/* o trilho tem a largura da linha e anda de 0% a 100%; o pacote vai na ponta */
+.tcp-trilho {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.tcp-pacote {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--texto);
+  background: rgba(11, 7, 16, 0.9);
+  border: 1px solid rgba(var(--luz-clara), 0.55);
+  box-shadow: 0 0 14px rgba(var(--luz), 0.75);
+}
+
+/* legenda de cada passo (uma de cada vez, no mesmo lugar) */
+.tcp-passos {
+  position: relative;
+  width: min(86vw, 30rem);
+  height: 3.2em;
+}
+
+.tcp-passo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: rgba(var(--luz-clara), 0.85);
+}
+
+/* "Reduzir movimento": os três passos em lista */
+.tcp-passos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(86vw, 30rem);
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: rgba(var(--luz-clara), 0.85);
+}
+
+/* ---------- A água encontra a lava ---------- */
+
+/* lava e água: duas poças de luz na parte de baixo da tela, uma de cada lado */
+.lv-liquidos {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 50% at 50% 80%, rgba(var(--luz), 0.08), transparent 70%), var(--preto);
+}
+
+.lv-lava,
+.lv-agua {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 56%;
+  will-change: transform;
+}
+
+/* lava: mais quente (amarela) perto do encontro, vermelha e escura longe dele.
+   Ela se dissolve um pouco depois do meio, misturando com a água sem linha */
+.lv-lava {
+  background: radial-gradient(ellipse 50% 60% at 50% 70%, #ffcf7a 0%, #ff7a1e 14%, #c2300a 36%, #4a0c03 64%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to right, #000 40%, transparent 60%);
+  mask-image: linear-gradient(to right, #000 40%, transparent 60%);
+}
+
+/* água: azul clara perto do encontro, azul profunda longe dele */
+.lv-agua {
+  background: radial-gradient(ellipse 50% 60% at 50% 70%, #b8e2ff 0%, #3b86d6 14%, #134a92 36%, #06183a 64%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to left, #000 40%, transparent 60%);
+  mask-image: linear-gradient(to left, #000 40%, transparent 60%);
+}
+
+/* as duas "respiram": uma camada mais clara por cima acende e apaga devagar
+   (só a opacidade muda, o que quase não custa nada) */
+.lv-lava::after,
+.lv-agua::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: lv-respira 6s ease-in-out infinite;
+}
+
+.lv-lava::after {
+  background: radial-gradient(ellipse 35% 40% at 50% 70%, rgba(255, 236, 170, 0.55), transparent 70%);
+}
+
+.lv-agua::after {
+  background: radial-gradient(ellipse 35% 40% at 50% 70%, rgba(210, 235, 255, 0.4), transparent 70%);
+  animation-duration: 7.4s;
+  animation-delay: -2s;
+}
+
+.lv-lava.parado::after,
+.lv-agua.parado::after {
+  animation: none;
+}
+
+@keyframes lv-respira {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 1; }
+}
+
+/* brilho quente no ponto de encontro */
+.lv-toque {
+  position: absolute;
+  left: 50%;
+  top: 83%;
+  width: 70vmin;
+  height: 34vmin;
+  margin: -17vmin 0 0 -35vmin;
+  background: radial-gradient(closest-side, rgba(255, 244, 220, 0.95), rgba(255, 170, 90, 0.5) 30%, rgba(200, 120, 255, 0.15) 65%, transparent);
+  pointer-events: none;
+}
+
+/* vapor: nasce no encontro e sobe; depois se abre pela tela */
+.lv-vapor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6%;
+  bottom: 12%;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+  /* forma de coluna arredondada, sem bordas retas */
+  -webkit-mask-image:
+    radial-gradient(ellipse 50% 64% at 50% 64%, #000 0%, rgba(0, 0, 0, 0.75) 45%, transparent 100%),
+    linear-gradient(to top, transparent 0%, #000 18%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(ellipse 50% 64% at 50% 64%, #000 0%, rgba(0, 0, 0, 0.75) 45%, transparent 100%),
+    linear-gradient(to top, transparent 0%, #000 18%);
+  mask-composite: intersect;
+}
+
+/* só a fumaça: sem a luz forte de fundo da névoa */
+.lv-vapor .nevoa-fonte {
+  display: none;
+}
+
+/* a luz violeta do site, atrás da obsidiana, acende quando o vapor se abre */
+.lv-luz {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 120vmin;
+  height: 120vmin;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, rgba(var(--luz), 0.42), rgba(var(--luz), 0.14) 50%, transparent);
+  pointer-events: none;
+}
+
+.lv-vinheta {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0) 14%, rgba(11, 7, 16, 0) 72%, var(--preto) 100%);
+}
+
+/* a obsidiana, no meio da névoa */
+.lv-obsidiana {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* a obsidiana nasce ainda incandescente: brilho quente por cima, que se apaga */
+.lv-calor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130%;
+  height: 130%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 170, 70, 0.75), rgba(255, 90, 30, 0.35) 50%, transparent);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.lv-texto {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: calc(7vh + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
+}
+
+/* ---------- Menos movimento ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .tcp-conexao::after,
+  .lv-lava::after,
+  .lv-agua::after {
+    animation: none;
+  }
+}

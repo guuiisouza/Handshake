@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { motion, useReducedMotion, type MotionStyle } from 'motion/react'
-import { iniciarNevoaWebGL } from './NevoaShader'
+import { NEVOA_VIOLETA, VAPOR, iniciarNevoaWebGL } from './NevoaShader'
+
+// Aparências disponíveis: a névoa do site (padrão) ou o vapor da cena da obsidiana
+const APARENCIAS = { nevoa: NEVOA_VIOLETA, vapor: VAPOR }
 import './Nevoa.css'
 
 // Névoa de "tinta na água" com luz violeta atrás da obsidiana.
@@ -105,9 +108,11 @@ type Props = {
   centroY?: number
   // quanto rolagem, toque e mouse agitam a fumaça (1 = normal, como na abertura e no mapa)
   sensibilidade?: number
+  // 'nevoa' (padrão) ou 'vapor' (cena da obsidiana)
+  aparencia?: keyof typeof APARENCIAS
 }
 
-function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1 }: Props) {
+function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1, aparencia = 'nevoa' }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const calmo = useReducedMotion()
   const [usarWebGL, setUsarWebGL] = useState(true)
@@ -118,13 +123,14 @@ function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibili
     if (!usarWebGL || !canvas) return
     const controle = iniciarNevoaWebGL(
       canvas,
-      { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade },
+      { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade, aparencia: APARENCIAS[aparencia] },
       () => setUsarWebGL(false),
     )
     return () => controle?.parar()
-  }, [usarWebGL, calmo, centroX, centroY, sensibilidade])
+  }, [usarWebGL, calmo, centroX, centroY, sensibilidade, aparencia])
 
   // As imagens do plano B só são geradas se ele for usado.
+  // (sem WebGL, o vapor usa a névoa simples do site)
   const fumaca = useMemo(() => (usarWebGL ? null : texturas()), [usarWebGL])
   const imagem = (url: string): CSSProperties => ({ backgroundImage: `url(${url})` })
 
