@@ -1,69 +1,58 @@
+/* ---------- Estrutura da abertura ----------
+   A seção é mais alta que a tela (240vh). Dentro dela, o "palco" fica grudado
+   na tela (position: sticky) enquanto a pessoa rola. É isso que permite a
+   obsidiana se aproximar e se dissolver aos poucos, em vez de só subir. */
+
 .abertura-nova {
   position: relative;
-  min-height: 100vh;
+  height: 240vh;
+  /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+
+.abertura-palco {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh; /* no iPhone, desconta a barra do Safari */
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  padding: 48px 24px;
+  background: radial-gradient(ellipse 120% 90% at 50% 44%, var(--carvao) 0%, var(--preto) 62%);
 }
 
-.luz {
-  position: absolute;
-  width: 140vw;
-  height: 140vw;
-  max-width: 900px;
-  max-height: 900px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -58%);
-  background: radial-gradient(circle, rgba(180, 76, 255, 0.3) 0%, rgba(180, 76, 255, 0.08) 35%, transparent 65%);
-  pointer-events: none;
-}
-
-.nevoa {
-  position: absolute;
-  width: 160%;
-  height: 50%;
-  left: -30%;
-  border-radius: 50%;
-  filter: blur(60px);
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-.nevoa-1 {
-  bottom: 5%;
-  background: radial-gradient(ellipse, rgba(120, 70, 180, 0.35), transparent 70%);
-  animation: deriva 18s ease-in-out infinite alternate;
-}
-
-.nevoa-2 {
-  top: 10%;
-  background: radial-gradient(ellipse, rgba(90, 110, 200, 0.18), transparent 70%);
-  animation: deriva 24s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes deriva {
-  from { transform: translateX(-6%); }
-  to   { transform: translateX(6%); }
-}
-
-.abertura-conteudo {
+.abertura-objeto {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 72px;
-  text-align: center;
+  z-index: 1;
 }
 
-.cena3d {
-  width: 200px;
-  height: 200px;
-  perspective: 1200px;
-  filter: drop-shadow(0 0 30px rgba(180, 76, 255, 0.35));
+/* ---------- Obsidiana ----------
+   --lado é o tamanho do cubo: 56% da largura no celular, até 320px no computador.
+   Tudo da obsidiana é calculado a partir dele. */
+
+.obsidiana {
+  --lado: clamp(170px, 56vw, 320px);
+  position: relative;
+  width: var(--lado);
+  height: var(--lado);
+  perspective: calc(var(--lado) * 6);
+  margin-top: calc(var(--lado) * -0.15);
+}
+
+/* Luz violeta atrás da pedra */
+.obsidiana-halo {
+  position: absolute;
+  inset: -75%;
+  background: radial-gradient(
+    circle closest-side,
+    rgba(var(--luz), 0.34) 0%,
+    rgba(var(--luz), 0.12) 38%,
+    rgba(var(--luz-azul), 0.04) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .cubo {
@@ -71,57 +60,174 @@
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transform: rotateX(-30deg) rotateY(45deg);
-  animation: flutuar 6s ease-in-out infinite;
-}
-
-.cubo.parado {
-  animation: none;
+  transform: rotateX(-26deg) rotateY(42deg);
+  animation: flutuar 7s ease-in-out infinite;
 }
 
 @keyframes flutuar {
-  0%, 100% { transform: translateY(0) rotateX(-30deg) rotateY(45deg); }
-  50%      { transform: translateY(-14px) rotateX(-30deg) rotateY(50deg); }
+  0%, 100% { transform: translateY(0) rotateX(-26deg) rotateY(42deg); }
+  50%      { transform: translateY(calc(var(--lado) * -0.06)) rotateX(-24deg) rotateY(50deg); }
 }
 
 .face {
   position: absolute;
-  width: 200px;
-  height: 200px;
+  inset: 0;
+  overflow: hidden;
   background-size: 100% 100%;
   image-rendering: pixelated;
-  box-shadow: inset 0 0 0 1px rgba(180, 76, 255, 0.18);
+  backface-visibility: hidden;
 }
 
-.frente   { transform: translateZ(100px); filter: brightness(0.85); }
-.tras     { transform: rotateY(180deg) translateZ(100px); }
-.direita  { transform: rotateY(90deg) translateZ(100px); filter: brightness(0.6); }
-.esquerda { transform: rotateY(-90deg) translateZ(100px); filter: brightness(0.6); }
-.topo     { transform: rotateX(90deg) translateZ(100px); filter: brightness(1.5); }
-.base     { transform: rotateX(-90deg) translateZ(100px); filter: brightness(0.4); }
+/* Camada de luz e sombra de cada face (como se a luz viesse de cima) */
+.face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sombreado);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--luz), 0.28),
+    inset 0 0 calc(var(--lado) * 0.14) rgba(var(--luz), 0.16);
+}
 
-.abertura-titulo {
-  font-size: 2.6rem;
-  letter-spacing: 6px;
-  color: var(--roxo-claro);
-  text-shadow: 0 0 24px rgba(180, 76, 255, 0.6);
+.frente   { transform: translateZ(calc(var(--lado) / 2));
+            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.10), rgba(0, 0, 0, 0.30)); }
+.tras     { transform: rotateY(180deg) translateZ(calc(var(--lado) / 2));
+            --sombreado: rgba(0, 0, 0, 0.4); }
+.direita  { transform: rotateY(90deg) translateZ(calc(var(--lado) / 2));
+            --sombreado: linear-gradient(195deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.62)); }
+.esquerda { transform: rotateY(-90deg) translateZ(calc(var(--lado) / 2));
+            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.06), rgba(0, 0, 0, 0.42)); }
+.topo     { transform: rotateX(90deg) translateZ(calc(var(--lado) / 2));
+            --sombreado: linear-gradient(135deg, rgba(var(--luz-clara), 0.16), rgba(var(--luz), 0.06)); }
+.base     { transform: rotateX(-90deg) translateZ(calc(var(--lado) / 2));
+            --sombreado: rgba(0, 0, 0, 0.7); }
+
+/* Reflexo que passa devagar pelas faces da frente, como luz em pedra polida */
+.frente::before,
+.esquerda::before,
+.topo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(var(--luz-clara), 0.13) 48%,
+    rgba(var(--luz-azul), 0.06) 54%,
+    transparent 62%
+  );
+  background-size: 260% 100%;
+  animation: reflexo 9s ease-in-out infinite;
+}
+
+@keyframes reflexo {
+  0%, 30% { background-position: 130% 0; }
+  70%, 100% { background-position: -30% 0; }
+}
+
+/* Sombra no "chão", com um leve reflexo violeta */
+.obsidiana-sombra {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: calc(var(--lado) * 1.3);
+  height: calc(var(--lado) * 0.22);
+  margin-left: calc(var(--lado) * -0.65);
+  margin-top: calc(var(--lado) * 0.28);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(var(--luz), 0.14) 55%,
+    transparent 100%
+  );
+  animation: sombra 7s ease-in-out infinite;
+}
+
+@keyframes sombra {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(0.88); opacity: 0.8; }
+}
+
+.cubo.parado,
+.obsidiana-sombra.parado {
+  animation: none;
+}
+
+/* ---------- Frase da passagem para o mapa ---------- */
+
+.abertura-frase-caixa {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .abertura-frase {
-  margin-top: 16px;
-  max-width: 300px;
-  line-height: 1.5;
-  opacity: 0.75;
+  width: min(88vw, 30rem);
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.45rem, 5.2vw, 2.1rem);
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--texto);
+  text-shadow: 0 0 28px rgba(var(--luz), 0.45);
 }
+
+/* ---------- "Role para baixo" ---------- */
 
 .abertura-dica {
   position: absolute;
-  bottom: 40px;
-  font-size: 0.8rem;
-  letter-spacing: 3px;
-  opacity: 0.45;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.55);
 }
 
+.dica-trilho {
+  position: relative;
+  width: 1px;
+  height: 38px;
+  overflow: hidden;
+  background: rgba(var(--luz-clara), 0.12);
+}
+
+.dica-linha {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 50%;
+  background: linear-gradient(to bottom, transparent, rgba(var(--luz-clara), 0.85));
+  animation: descer 2.6s ease-in-out infinite;
+}
+
+@keyframes descer {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(200%); }
+}
+
+/* ---------- Menos movimento ---------- */
+
 @media (prefers-reduced-motion: reduce) {
-  .nevoa { animation: none; }
+  .cubo,
+  .obsidiana-sombra,
+  .dica-linha,
+  .frente::before,
+  .esquerda::before,
+  .topo::before {
+    animation: none;
+  }
 }

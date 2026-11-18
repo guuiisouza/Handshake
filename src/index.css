@@ -6,6 +6,19 @@
   --roxo: #b44cff;
   --roxo-claro: #e6c8ff;
   --texto: #f3eaff;
+
+  /* Sistema de luz e névoa: as mesmas cores em todas as cenas.
+     Ficam como "R, G, B" para poder usar com transparência: rgba(var(--luz), 0.3) */
+  --luz: 168, 92, 255;          /* violeta principal da obsidiana */
+  --luz-clara: 226, 204, 255;   /* reflexos e brilhos */
+  --luz-azul: 110, 130, 230;    /* reflexo azulado discreto */
+  --carvao: #120c1a;            /* cinza carvão do fundo iluminado */
+}
+
+/* Evita rolagem para os lados quando uma cena ocupa a tela inteira */
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 * {
