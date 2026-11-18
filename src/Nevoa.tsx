@@ -103,9 +103,11 @@ type Props = {
   // 0 a 1; x da esquerda para a direita, y de BAIXO para cima.
   centroX?: number
   centroY?: number
+  // quanto rolagem, toque e mouse agitam a fumaça (1 = normal, como na abertura e no mapa)
+  sensibilidade?: number
 }
 
-function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56 }: Props) {
+function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const calmo = useReducedMotion()
   const [usarWebGL, setUsarWebGL] = useState(true)
@@ -116,11 +118,11 @@ function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56 }: Props) 
     if (!usarWebGL || !canvas) return
     const controle = iniciarNevoaWebGL(
       canvas,
-      { estatico: Boolean(calmo), centro: [centroX, centroY] },
+      { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade },
       () => setUsarWebGL(false),
     )
     return () => controle?.parar()
-  }, [usarWebGL, calmo, centroX, centroY])
+  }, [usarWebGL, calmo, centroX, centroY, sensibilidade])
 
   // As imagens do plano B só são geradas se ele for usado.
   const fumaca = useMemo(() => (usarWebGL ? null : texturas()), [usarWebGL])

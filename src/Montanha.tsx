@@ -24,6 +24,8 @@ import './Montanha.css'
 // Parallax do pico (os mesmos números usados nos useTransform abaixo)
 const PICO_DESCE = 0.18 // desce 18% da altura da caixa ao longo da galeria
 const PICO_CRESCE = 0.08 // e cresce 8%
+// Na galeria a rolagem é longa: a fumaça se agita só um terço do normal ao rolar
+const SENSIBILIDADE_GALERIA = 0.35
 // Tamanho da nuvem quando ainda está no cume (em relação ao tamanho no vão)
 const NUVEM_NO_CUME = 0.22
 
@@ -134,14 +136,14 @@ function Montanha({ subida, vao, nuvemNosVaos }: Props) {
         {/* neve soprada pelo vento: a névoa do site, saindo do cume para a direita.
             centroX bem fora da caixa = sem "área livre" no meio, névoa por toda a bandeira */}
         <div className="montanha-vento">
-          <Nevoa centroX={-4} centroY={0.5} />
+          <Nevoa centroX={-4} centroY={0.5} sensibilidade={SENSIBILIDADE_GALERIA} />
         </div>
       </motion.div>
 
       {/* nuvem dos vãos (iPhone): o mesmo sistema da neve, nascendo do cume */}
       {nuvemNosVaos && (
         <div ref={nuvem} className="montanha-nuvem" style={{ display: 'none' }}>
-          <Nevoa centroX={-4} centroY={0.5} />
+          <Nevoa centroX={-4} centroY={0.5} sensibilidade={SENSIBILIDADE_GALERIA} />
         </div>
       )}
     </div>

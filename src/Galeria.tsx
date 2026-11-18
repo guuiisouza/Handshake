@@ -293,7 +293,9 @@ function Galeria() {
       const r = cena.getBoundingClientRect()
       distancia = Math.min(distancia, Math.abs(r.top + r.height / 2 - altura / 2) / altura)
     })
-    const t = Math.min(Math.max((distancia - 0.12) / 0.3, 0), 1)
+    // a passagem usa todo o caminho entre o par (5% de uma tela do centro) e o
+    // meio do vão (50%): assim a nuvem anda devagar em relação à rolagem
+    const t = Math.min(Math.max((distancia - 0.05) / 0.45, 0), 1)
     const forca = t * t * (3 - 2 * t)
     f.style.setProperty('--vao', forca.toFixed(3))
     vao.set(forca)

@@ -128,6 +128,7 @@ void main() {
 
 type Opcoes = {
   estatico: boolean          // true = "Reduzir movimento": um quadro só, parado
+  sensibilidade?: number     // quanto rolagem/toque/mouse agitam a fumaça (1 = normal)
   centro: [number, number]   // posição da obsidiana na tela (0 a 1, de baixo para cima)
 }
 
@@ -149,7 +150,7 @@ function compilar(gl: WebGLRenderingContext, tipo: number, codigo: string) {
 // (para mostrar a névoa simples) e devolve null.
 export function iniciarNevoaWebGL(
   canvas: HTMLCanvasElement,
-  { estatico, centro }: Opcoes,
+  { estatico, centro, sensibilidade = 1 }: Opcoes,
   aoFalhar: () => void,
 ): ControleNevoa | null {
   const gl = canvas.getContext('webgl', {
@@ -266,7 +267,7 @@ export function iniciarNevoaWebGL(
   function aoRolar() {
     const delta = Math.abs(window.scrollY - ultimaRolagem)
     ultimaRolagem = window.scrollY
-    alvoAgitacao = Math.min(1, alvoAgitacao + delta * 0.0025)
+    alvoAgitacao = Math.min(1, alvoAgitacao + delta * 0.0025 * sensibilidade)
   }
 
   function lerPonto(e: PointerEvent): [number, number] {
@@ -277,8 +278,8 @@ export function iniciarNevoaWebGL(
   function aoMover(e: PointerEvent) {
     if (ultimoPonto) {
       const distancia = Math.hypot(e.clientX - ultimoPonto[0], e.clientY - ultimoPonto[1])
-      alvoAgitacao = Math.min(1, alvoAgitacao + distancia * 0.0012)
-      forca = Math.min(1, forca + distancia * 0.004)
+      alvoAgitacao = Math.min(1, alvoAgitacao + distancia * 0.0012 * sensibilidade)
+      forca = Math.min(1, forca + distancia * 0.004 * sensibilidade)
     }
     ultimoPonto = [e.clientX, e.clientY]
     ponteiro = lerPonto(e)
@@ -287,8 +288,8 @@ export function iniciarNevoaWebGL(
   function aoTocar(e: PointerEvent) {
     ultimoPonto = [e.clientX, e.clientY]
     ponteiro = lerPonto(e)
-    forca = Math.min(1, forca + 0.5)
-    alvoAgitacao = Math.min(1, alvoAgitacao + 0.25)
+    forca = Math.min(1, forca + 0.5 * sensibilidade)
+    alvoAgitacao = Math.min(1, alvoAgitacao + 0.25 * sensibilidade)
   }
 
   function aoPerderContexto(e: Event) {
