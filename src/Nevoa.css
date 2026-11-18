@@ -1,6 +1,7 @@
 /* Névoa e luz reaproveitáveis.
-   Para ficar leve no iPhone: nada de filter: blur. A suavidade vem dos
-   gradientes, e só "transform" é animado (o celular faz isso sem esforço). */
+   A névoa principal é desenhada pela placa de vídeo (NevoaShader.ts) num canvas.
+   As camadas ".fumaca" abaixo são o plano B, para aparelhos sem WebGL:
+   textura desenhada UMA vez e só "transform" animado. */
 
 .nevoa-sistema {
   position: absolute;
@@ -9,7 +10,9 @@
   pointer-events: none;
 }
 
-/* Brilho central, de onde parece vir a luz */
+/* ---------- Luz ---------- */
+
+/* Brilho ambiente, bem aberto */
 .nevoa-luz {
   position: absolute;
   left: 50%;
@@ -19,92 +22,124 @@
   transform: translate(-50%, -50%);
   background: radial-gradient(
     circle closest-side,
-    rgba(var(--luz), 0.22) 0%,
-    rgba(var(--luz), 0.09) 30%,
+    rgba(var(--luz), 0.14) 0%,
+    rgba(var(--luz), 0.05) 30%,
     rgba(var(--luz-azul), 0.03) 55%,
     transparent 100%
   );
 }
 
-/* Feixes de luz difusa que descem atravessando a névoa */
-.nevoa-feixe {
+/* Fonte de luz forte, bem atrás da obsidiana */
+.nevoa-fonte {
   position: absolute;
-  top: -25%;
-  height: 150%;
-  width: 22vmax;
-  transform-origin: 50% 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(var(--luz-clara), 0) 0%,
-    rgba(var(--luz-clara), 0.07) 35%,
-    rgba(var(--luz), 0.05) 60%,
-    transparent 90%
-  );
-  /* bordas laterais bem suaves */
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 45%, #000 55%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 45%, #000 55%, transparent);
-  will-change: transform;
-}
-
-.feixe-1 { left: 18%; --giro: -20deg; animation: balanco 17s ease-in-out infinite alternate; }
-.feixe-2 { left: 44%; --giro: -12deg; width: 14vmax; opacity: 0.8; animation: balanco 23s ease-in-out infinite alternate-reverse; }
-.feixe-3 { left: 66%; --giro: -26deg; width: 18vmax; opacity: 0.6; animation: balanco 29s ease-in-out infinite alternate; }
-
-@keyframes balanco {
-  from { transform: rotate(var(--giro)) translateX(-3vmax); }
-  to   { transform: rotate(calc(var(--giro) + 6deg)) translateX(3vmax); }
-}
-
-/* Camadas de névoa semitransparente, orgânica, que derivam devagar */
-.nevoa-camada {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform;
-}
-
-.camada-1 {
-  width: 170vmax;
-  height: 60vmax;
   left: 50%;
-  bottom: -28vmax;
-  margin-left: -85vmax;
-  background: radial-gradient(closest-side, rgba(var(--luz), 0.20), rgba(var(--luz), 0.06) 55%, transparent);
-  animation: deriva-a 26s ease-in-out infinite alternate;
+  top: 44%;
+  width: 90vmin;
+  height: 90vmin;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle closest-side,
+    rgba(var(--luz-clara), 0.30) 0%,
+    rgba(var(--luz), 0.26) 22%,
+    rgba(var(--luz), 0.08) 55%,
+    transparent 100%
+  );
 }
 
-.camada-2 {
-  width: 120vmax;
-  height: 46vmax;
-  left: -40vmax;
-  top: 8%;
-  background: radial-gradient(closest-side, rgba(var(--luz-azul), 0.10), transparent);
-  animation: deriva-b 34s ease-in-out infinite alternate;
+/* ---------- Fumaça (placa de vídeo) ---------- */
+
+.nevoa-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.camada-3 {
-  width: 110vmax;
-  height: 40vmax;
-  right: -45vmax;
-  top: 42%;
-  background: radial-gradient(closest-side, rgba(var(--luz-clara), 0.06), transparent);
-  animation: deriva-a 40s ease-in-out infinite alternate-reverse;
+/* ---------- Fumaça (plano B, sem WebGL) ---------- */
+
+/* Esta máscara fica PARADA sobre todas as camadas: a fumaça é rala em volta
+   da obsidiana (o destaque) e mais densa nas bordas. */
+.nevoa-fumacas {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
 }
 
-@keyframes deriva-a {
-  from { transform: translate3d(-6%, 0, 0) scale(1); }
-  to   { transform: translate3d(6%, -3%, 0) scale(1.08); }
+/* Cada camada é a textura repetida, um pouco maior que a tela.
+   Ela anda exatamente o tamanho de uma repetição (--t) e recomeça:
+   como a textura se repete sem emenda, o movimento parece infinito. */
+.fumaca {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% + var(--t));
+  height: 100%;
+  background-repeat: repeat;
+  background-size: var(--t) var(--t);
+  will-change: transform;
 }
 
-@keyframes deriva-b {
-  from { transform: translate3d(0, 0, 0) scale(1.05); }
-  to   { transform: translate3d(12%, 4%, 0) scale(0.95); }
+/* grande e lenta, indo para a esquerda */
+.fumaca-1 {
+  --t: 95vmax;
+  opacity: 0.4;
+  animation: para-esquerda 120s linear infinite;
 }
 
-/* Quem pediu menos movimento no celular vê tudo parado */
+/* mais fina e clara, indo para a direita */
+.fumaca-2 {
+  --t: 60vmax;
+  opacity: 0.22;
+  animation: para-direita 80s linear infinite;
+}
+
+/* azulada e discreta, subindo devagar */
+.fumaca-3 {
+  --t: 75vmax;
+  width: 100%;
+  height: calc(100% + var(--t));
+  opacity: 0.2;
+  animation: para-cima 100s linear infinite;
+}
+
+/* neblina rente ao chão, um pouco mais densa e mais rápida */
+.fumaca-chao {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 55%);
+  mask-image: linear-gradient(to bottom, transparent, #000 55%);
+}
+
+.fumaca-4 {
+  --t: 55vmax;
+  opacity: 0.45;
+  animation: para-esquerda 55s linear infinite;
+}
+
+@keyframes para-esquerda {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(calc(-1 * var(--t)), 0, 0); }
+}
+
+@keyframes para-direita {
+  from { transform: translate3d(calc(-1 * var(--t)), 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes para-cima {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, calc(-1 * var(--t)), 0); }
+}
+
+/* Quem pediu menos movimento no celular vê a névoa parada */
 @media (prefers-reduced-motion: reduce) {
-  .nevoa-feixe,
-  .nevoa-camada {
+  .fumaca {
     animation: none;
   }
-  .feixe-1, .feixe-2, .feixe-3 { transform: rotate(var(--giro)); }
 }
