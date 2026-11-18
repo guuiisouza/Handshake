@@ -3,14 +3,11 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import Nevoa from './Nevoa'
 import './Abertura.css'
 
-// Tons da obsidiana, do mais escuro ao mais claro.
-// Os 6 primeiros formam a pedra; os últimos são os veios roxos que brilham.
-const TONS = [
-  '#050308', '#08050d', '#0d0915', '#130d1f', '#1a122b', '#241939',
-  '#33224f', '#4a3173', '#6a48a3', '#9474d1',
-]
-const TONS_PEDRA = 6
-const TAMANHO = 32 // a textura é 32x32: lembra Minecraft sem ficar "pixel duro"
+// Pedra: quase preta, com leve tom roxo (como o bloco do Minecraft).
+const PEDRA = ['#050308', '#09060f', '#0e0918', '#150d24']
+// Manchas: do roxo escuro ao lilás claro (o roxo vivo vem do ícone do app).
+const ROXOS = ['#24103f', '#3d1670', '#5a1fa3', '#7f2fe0', '#a95cff', '#d9a2ff']
+const TAMANHO = 16 // 16x16, igual ao bloco original do jogo
 
 const FACES = ['frente', 'tras', 'direita', 'esquerda', 'topo', 'base']
 
@@ -36,47 +33,53 @@ function texturaObsidiana(semente: number): string {
   if (!ctx) return ''
 
   const sorteio = criarSorteio(semente)
-
-  // 1. Manchas grandes e suaves: uma grade pequena de valores sorteados,
-  //    misturados entre si para formar regiões mais claras e mais escuras.
-  const GRADE = 6
-  const grade = Array.from({ length: GRADE * GRADE }, () => sorteio())
-  const mancha = (x: number, y: number) => {
-    const gx = (x / (TAMANHO - 1)) * (GRADE - 1)
-    const gy = (y / (TAMANHO - 1)) * (GRADE - 1)
-    const x0 = Math.floor(gx), y0 = Math.floor(gy)
-    const x1 = Math.min(x0 + 1, GRADE - 1), y1 = Math.min(y0 + 1, GRADE - 1)
-    const fx = gx - x0, fy = gy - y0
-    const v = (cx: number, cy: number) => grade[cy * GRADE + cx]
-    const cima = v(x0, y0) * (1 - fx) + v(x1, y0) * fx
-    const baixo = v(x0, y1) * (1 - fx) + v(x1, y1) * fx
-    return cima * (1 - fy) + baixo * fy
+  const pintar = (x: number, y: number, cor: string) => {
+    ctx.fillStyle = cor
+    ctx.fillRect(x, y, 1, 1)
   }
 
+  // 1. Fundo de pedra: cada pixel sorteia um tom escuro.
+  //    Elevar a 1.6 puxa para o mais escuro: a obsidiana é quase preta.
   for (let y = 0; y < TAMANHO; y++) {
     for (let x = 0; x < TAMANHO; x++) {
-      const valor = mancha(x, y) * 0.65 + sorteio() * 0.35
-      // elevar ao quadrado puxa para o escuro: a obsidiana é quase preta
-      const tom = Math.min(TONS_PEDRA - 1, Math.floor(valor * valor * TONS_PEDRA))
-      ctx.fillStyle = TONS[tom]
-      ctx.fillRect(x, y, 1, 1)
+      pintar(x, y, PEDRA[Math.floor(Math.pow(sorteio(), 1.6) * PEDRA.length)])
     }
   }
 
-  // 2. Veios roxos: pequenos caminhos que andam em diagonal, como na obsidiana do jogo.
-  const VEIOS = 16
-  for (let i = 0; i < VEIOS; i++) {
-    let x = Math.floor(sorteio() * TAMANHO)
-    let y = Math.floor(sorteio() * TAMANHO)
-    const passos = 2 + Math.floor(sorteio() * 5)
-    const dx = sorteio() < 0.5 ? 1 : -1
-    for (let p = 0; p < passos; p++) {
-      const brilho = TONS_PEDRA + Math.floor(sorteio() * (TONS.length - TONS_PEDRA))
-      ctx.fillStyle = TONS[brilho]
-      ctx.fillRect(x, y, 1, 1)
-      x = (x + (sorteio() < 0.6 ? dx : 0) + TAMANHO) % TAMANHO
-      y = (y + 1) % TAMANHO
+  // 2. Manchas agrupadas: cada mancha nasce num ponto e vai "crescendo"
+  //    para pixels vizinhos. O centro é o mais claro e as bordas escurecem.
+  const vizinhos = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+  const MANCHAS = 7 + Math.floor(sorteio() * 3)
+  for (let m = 0; m < MANCHAS; m++) {
+    const cx = Math.floor(sorteio() * TAMANHO)
+    const cy = Math.floor(sorteio() * TAMANHO)
+    const tamanho = 3 + Math.floor(sorteio() * 6)
+    // pouco mais da metade das manchas é de roxo vivo (ícone);
+    // as outras são de roxo escuro (bloco do jogo)
+    const viva = sorteio() < 0.55
+
+    const pixels: [number, number][] = [[cx, cy]]
+    let tentativas = 0
+    while (pixels.length < tamanho && tentativas++ < 40) {
+      const [px, py] = pixels[Math.floor(sorteio() * pixels.length)]
+      const [dx, dy] = vizinhos[Math.floor(sorteio() * 4)]
+      const nx = px + dx, ny = py + dy
+      const dentro = nx >= 0 && ny >= 0 && nx < TAMANHO && ny < TAMANHO
+      if (dentro && !pixels.some(([x, y]) => x === nx && y === ny)) pixels.push([nx, ny])
     }
+
+    for (const [x, y] of pixels) {
+      const distancia = Math.abs(x - cx) + Math.abs(y - cy)
+      const tom = viva
+        ? Math.max(2, (sorteio() < 0.35 ? 5 : 4) - distancia) // centro lilás claro, bordas roxo vivo
+        : Math.max(0, 2 - distancia)                         // mancha escura e discreta
+      pintar(x, y, ROXOS[tom])
+    }
+  }
+
+  // 3. Alguns pontinhos soltos de roxo escuro, como no bloco original.
+  for (let i = 0; i < 8; i++) {
+    pintar(Math.floor(sorteio() * TAMANHO), Math.floor(sorteio() * TAMANHO), ROXOS[sorteio() < 0.5 ? 0 : 1])
   }
 
   return canvas.toDataURL()

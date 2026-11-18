@@ -89,16 +89,19 @@
     inset 0 0 calc(var(--lado) * 0.14) rgba(var(--luz), 0.16);
 }
 
+/* As sombras são leves de propósito: o roxo vivo das manchas continua
+   aparecendo nas laterais, como no ícone do app. */
 .frente   { transform: translateZ(calc(var(--lado) / 2));
-            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.10), rgba(0, 0, 0, 0.30)); }
+            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.08), rgba(0, 0, 0, 0.22)); }
 .tras     { transform: rotateY(180deg) translateZ(calc(var(--lado) / 2));
             --sombreado: rgba(0, 0, 0, 0.4); }
 .direita  { transform: rotateY(90deg) translateZ(calc(var(--lado) / 2));
-            --sombreado: linear-gradient(195deg, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.62)); }
+            --sombreado: linear-gradient(195deg, rgba(0, 0, 0, 0.26), rgba(0, 0, 0, 0.48)); }
 .esquerda { transform: rotateY(-90deg) translateZ(calc(var(--lado) / 2));
-            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.06), rgba(0, 0, 0, 0.42)); }
+            --sombreado: linear-gradient(165deg, rgba(var(--luz), 0.05), rgba(0, 0, 0, 0.32)); }
+/* O topo recebe a luz de cima: brilho violeta, sem acinzentar a pedra */
 .topo     { transform: rotateX(90deg) translateZ(calc(var(--lado) / 2));
-            --sombreado: linear-gradient(135deg, rgba(var(--luz-clara), 0.16), rgba(var(--luz), 0.06)); }
+            --sombreado: linear-gradient(135deg, rgba(var(--luz), 0.16), rgba(var(--luz), 0.04) 70%); }
 .base     { transform: rotateX(-90deg) translateZ(calc(var(--lado) / 2));
             --sombreado: rgba(0, 0, 0, 0.7); }
 
