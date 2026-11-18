@@ -41,8 +41,10 @@ const PASSOS = [
   { texto: 'Conexão estabelecida', de: 0.87, ate: 2 },
 ]
 
-// Estes continuam presos à rolagem (trecho da rolagem da cena, 0 a 1)
-const TEXTO = { de: 0.72, ate: 0.8 }
+// A frase surge suavemente quando o ACK chega e a conexão se acende
+const TEXTO = { de: 0.86, ate: 1 }
+
+// O escurecimento do fim continua preso à rolagem (trecho da rolagem da cena, 0 a 1)
 const SAIDA = { de: 0.93, ate: 1 } // tudo escurece, levando à cena da obsidiana
 
 // Computador retrô em pixel art (30 x 22), desenhado por código, visto de três
@@ -178,10 +180,12 @@ function Legenda({ p, passo }: { p: MotionValue<number>; passo: (typeof PASSOS)[
   )
 }
 
-// Toca a troca de pacotes uma vez quando a cena aparece (quase toda na tela)
-// e volta ao começo quando ela sai totalmente da tela. Assim, ao voltar, a
-// animação recomeça do zero. Com "Reduzir movimento", fica direto no fim.
-function useHandshakeSozinho(palco: RefObject<HTMLDivElement | null>, calmo: boolean) {
+// Relógio das duas cenas: toca a animação uma vez, em "duracao" segundos,
+// quando a cena aparece (quase toda na tela) e volta ao começo quando ela sai
+// totalmente da tela. Assim, ao voltar, a animação recomeça do zero.
+// Devolve o andamento, de 0 (começo) a 1 (fim). Com "Reduzir movimento",
+// fica direto no fim.
+function useTocarUmaVez(palco: RefObject<HTMLDivElement | null>, calmo: boolean, duracao: number) {
   const andamento = useMotionValue(calmo ? 1 : 0)
 
   useEffect(() => {
@@ -203,7 +207,7 @@ function useHandshakeSozinho(palco: RefObject<HTMLDivElement | null>, calmo: boo
           andamento.set(0)
         } else if (entrada.intersectionRatio >= 0.6 && !jaTocou) {
           jaTocou = true
-          tocando = animate(andamento, 1, { duration: DURACAO, ease: 'linear' })
+          tocando = animate(andamento, 1, { duration: duracao, ease: 'linear' })
         }
       },
       { threshold: [0, 0.6] },
@@ -213,7 +217,7 @@ function useHandshakeSozinho(palco: RefObject<HTMLDivElement | null>, calmo: boo
       observador.disconnect()
       tocando?.stop()
     }
-  }, [andamento, calmo, palco])
+  }, [andamento, calmo, palco, duracao])
 
   return andamento
 }
@@ -224,7 +228,7 @@ function CenaHandshake() {
   const calmo = Boolean(useReducedMotion())
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   // a troca de pacotes anda no próprio ritmo (0 a 1), sem depender da rolagem
-  const a = useHandshakeSozinho(palco, calmo)
+  const a = useTocarUmaVez(palco, calmo, DURACAO)
 
   // "Reduzir movimento": a conexão já aparece pronta, sem pacotes viajando
   const conexao = useTransform(a, (v) => (calmo ? 1 : faixa(v, CONEXAO.de, CONEXAO.ate)))
@@ -234,7 +238,7 @@ function CenaHandshake() {
   // a névoa aparece com a conexão e se apaga junto com o resto no fim da cena
   // (assim a troca para a cena da obsidiana acontece no escuro, sem linha)
   const nevoa = useTransform([conexao, saida], ([c, s]: number[]) => c * 0.7 * s)
-  const texto = useTransform(p, (v) => (calmo ? 1 : faixa(v, TEXTO.de, TEXTO.ate)))
+  const texto = useTransform(a, (v) => (calmo ? 1 : faixa(v, TEXTO.de, TEXTO.ate)))
   const textoY = useTransform(texto, [0, 1], [16, 0])
 
   return (
@@ -289,35 +293,41 @@ function CenaHandshake() {
 // violeta do site; dela nasce a obsidiana da abertura.
 // Lava e água são só degradês (quase não pesam); a única coisa desenhada pela
 // placa de vídeo é o vapor.
+// Como a troca de pacotes, isso não depende da rolagem: toca sozinho, uma vez,
+// quando a cena aparece. Só o texto continua aparecendo pela rolagem.
+const DURACAO_OBSIDIANA = 8 // segundos
 
 function CenaObsidiana() {
   const ref = useRef<HTMLElement>(null)
   const calmo = Boolean(useReducedMotion())
+  const palco = useRef<HTMLDivElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
+  // a animação anda no próprio ritmo (0 = começo, 1 = obsidiana pronta)
+  const a = useTocarUmaVez(palco, calmo, DURACAO_OBSIDIANA)
 
   // lava e água deslizam das bordas até se encontrarem no meio
-  const chegada = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.02, 0.24)))
+  const chegada = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.03, 0.34)))
   const lavaX = useTransform(chegada, [0, 1], ['-60%', '0%'])
   const aguaX = useTransform(chegada, [0, 1], ['60%', '0%'])
   // depois que a obsidiana nasce, as duas se apagam devagar
-  const liquidos = useTransform(p, (v) => (calmo ? 0.35 : 1 - 0.65 * faixa(v, 0.5, 0.66)))
+  const liquidos = useTransform(a, (v) => (calmo ? 0.35 : 1 - 0.65 * faixa(v, 0.71, 0.94)))
   // brilho quente no ponto onde se tocam
-  const toque = useTransform(p, (v) => (calmo ? 0.4 : faixa(v, 0.2, 0.28) * (1 - 0.6 * faixa(v, 0.5, 0.66))))
+  const toque = useTransform(a, (v) => (calmo ? 0.4 : faixa(v, 0.28, 0.4) * (1 - 0.6 * faixa(v, 0.71, 0.94))))
   // o vapor sobe do ponto de contato e depois se abre pela tela
-  const vapor = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.24, 0.36)))
-  const vaporAltura = useTransform(p, (v) => (calmo ? 1 : 0.15 + 0.85 * faixa(v, 0.24, 0.5)))
-  const abertura = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.36, 0.6)))
+  const vapor = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.34, 0.51)))
+  const vaporAltura = useTransform(a, (v) => (calmo ? 1 : 0.15 + 0.85 * faixa(v, 0.34, 0.71)))
+  const abertura = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.51, 0.86)))
   const vaporLargura = useTransform(abertura, [0, 1], [0.3, 1.1])
   // a obsidiana surge de dentro da névoa, ainda quente, e esfria
-  const bloco = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.5, 0.62)))
+  const bloco = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.71, 0.89)))
   const blocoEscala = useTransform(bloco, [0, 1], [0.85, 1])
-  const calor = useTransform(p, (v) => (calmo ? 0 : faixa(v, 0.5, 0.56) * (1 - faixa(v, 0.58, 0.7))))
+  const calor = useTransform(a, (v) => (calmo ? 0 : faixa(v, 0.71, 0.8) * (1 - faixa(v, 0.83, 1))))
   const texto = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.66, 0.76)))
   const textoY = useTransform(texto, [0, 1], [16, 0])
 
   return (
     <section ref={ref} className="rev rev-obsidiana" aria-label="Obsidiana">
-      <div className="rev-palco">
+      <div ref={palco} className="rev-palco">
         <motion.div className="lv-liquidos" style={{ opacity: liquidos }} aria-hidden="true">
           <motion.div className={calmo ? 'lv-lava parado' : 'lv-lava'} style={{ x: lavaX }} />
           <motion.div className={calmo ? 'lv-agua parado' : 'lv-agua'} style={{ x: aguaX }} />
