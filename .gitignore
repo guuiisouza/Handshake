@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Arquivos de trabalho locais (não vão para o GitHub)
+CLAUDE.md
+.claude/
+HANDSHAKE_DOCUMENTO_MESTRE.md
+HANDSHAKE_PROMPT_FINAL.md
