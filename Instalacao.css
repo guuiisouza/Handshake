@@ -1,0 +1,80 @@
+.inst {
+  min-height: 100vh;
+  max-width: 430px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.inst-titulo {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 2.6rem;
+  letter-spacing: 4px;
+  color: #f0d4ff;
+  text-shadow: 0 0 18px #c04dff;
+}
+
+.inst-frase {
+  font-size: 1.3rem;
+  font-style: italic;
+  color: #f3eaff;
+}
+
+.inst-sub {
+  font-size: 1rem;
+  opacity: 0.75;
+}
+
+.inst-passos {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.inst-passos li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 2px solid #3a2550;
+  background: #120a18;
+  line-height: 1.45;
+}
+
+.inst-passos span {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 1.3rem;
+  color: #d98cff;
+  min-width: 18px;
+}
+
+.inst-link {
+  background: none;
+  border: none;
+  color: #d98cff;
+  text-decoration: underline;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.inst-ajuda {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.inst-pular {
+  margin-top: 10px;
+  background: none;
+  border: 1px solid #5a3a6e;
+  color: #cbb6dc;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
