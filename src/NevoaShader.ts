@@ -86,14 +86,14 @@ void main() {
   float f = camadas(s + 3.0 * r);
 
   // fiapos: só as partes mais densas aparecem
-  float fiapos = smoothstep(0.42, 0.95, f) * (0.55 + 0.45 * clamp(length(r), 0.0, 1.0));
+  float fiapos = smoothstep(0.36, 0.9, f) * (0.55 + 0.45 * clamp(length(r), 0.0, 1.0));
 
   // Onde a névoa aparece: densa nas bordas e embaixo, rala em volta da obsidiana
   float distancia = length(p - centro);
-  float longe = smoothstep(0.16, 0.62, distancia);
+  float longe = smoothstep(0.22, 0.7, distancia);
   float baixo = smoothstep(0.6, 0.0, uv.y);
   float borda = smoothstep(0.28, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
-  float mascara = clamp(0.25 + baixo * 0.75 + borda * 0.5, 0.0, 1.0) * mix(0.08, 1.0, longe);
+  float mascara = clamp(0.35 + baixo * 0.75 + borda * 0.5, 0.0, 1.0) * mix(0.03, 1.0, longe);
 
   // Cores: violeta escuro -> violeta -> lilás onde a luz atrás da pedra alcança
   vec3 escuro = vec3(0.16, 0.06, 0.32);
@@ -103,7 +103,7 @@ void main() {
   cor = mix(cor, lilas, clamp(length(q) - 0.6, 0.0, 1.0) * 0.5);
   cor = mix(cor, lilas, exp(-distancia * distancia * 3.0) * 0.35);
   float densidade = fiapos * mascara;
-  float alfa = densidade * 0.7;
+  float alfa = densidade * 0.85;
 
   // Partículas brilhantes bem pequenas, subindo e piscando.
   // Elas aparecem quase só dentro da fumaça (como pó brilhando na tinta),

@@ -63,8 +63,8 @@
 .nevoa-fumacas {
   position: absolute;
   inset: 0;
-  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
-  mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 44%, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0.45) 55%, #000 100%);
 }
 
 /* Cada camada é a textura repetida, um pouco maior que a tela.
@@ -84,14 +84,14 @@
 /* grande e lenta, indo para a esquerda */
 .fumaca-1 {
   --t: 95vmax;
-  opacity: 0.4;
+  opacity: 0.48;
   animation: para-esquerda 120s linear infinite;
 }
 
 /* mais fina e clara, indo para a direita */
 .fumaca-2 {
   --t: 60vmax;
-  opacity: 0.22;
+  opacity: 0.27;
   animation: para-direita 80s linear infinite;
 }
 
@@ -100,7 +100,7 @@
   --t: 75vmax;
   width: 100%;
   height: calc(100% + var(--t));
-  opacity: 0.2;
+  opacity: 0.24;
   animation: para-cima 100s linear infinite;
 }
 
@@ -118,7 +118,7 @@
 
 .fumaca-4 {
   --t: 55vmax;
-  opacity: 0.45;
+  opacity: 0.54;
   animation: para-esquerda 55s linear infinite;
 }
 
