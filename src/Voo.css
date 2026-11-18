@@ -1,17 +1,23 @@
 /* Estilos da tela do voo */
 
+/* A tela do voo ocupa a tela inteira; o mapa fica no fundo, de borda a borda.
+   (Os textos por cima são temporários: a parte 3b troca pela contagem discreta.) */
 .voo {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100lvh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 18px;
-  padding: 28px 20px;
+  padding: calc(28px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
   text-align: center;
-  background: #080309;
+  background: var(--preto);
   position: relative;
   overflow: hidden;
+  /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 .voo-titulo {
@@ -38,9 +44,135 @@
   font-style: italic;
 }
 
-.voo-mapa {
+/* ---------- Mapa ---------- */
+
+/* O palco do mapa cobre a tela inteira, atrás dos textos.
+   O SVG usa preserveAspectRatio "slice": sempre preenche tudo e corta o excesso. */
+.mapa-palco {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Escurece só o alto e o pé da tela, para o mapa se fundir com as cenas
+   vizinhas e os textos continuarem legíveis por cima */
+.mapa-palco::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0) 18%),
+    linear-gradient(to top, var(--preto) 0%, rgba(11, 7, 16, 0) 22%);
+}
+
+/* Os textos ficam por cima do mapa */
+.voo > :not(.mapa-palco) {
+  position: relative;
+  z-index: 1;
+}
+
+/* empurra a contagem e o que vem depois para o pé da tela */
+.voo-legenda {
+  margin-top: auto;
+}
+
+.mapa-desenho {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-width: 380px;
+  height: 100%;
+  display: block;
+}
+
+/* Linhas de latitude/longitude: quase invisíveis, só dão profundidade */
+.mapa-grade {
+  fill: none;
+  stroke: rgba(var(--luz-clara), 0.06);
+  stroke-width: 0.6px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Continentes suaves em cinza-escuro, com uma borda de luz violeta bem leve */
+.mapa-terra {
+  fill: url(#terra);
+  stroke: rgba(var(--luz), 0.3);
+  stroke-width: 0.8px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Rota: as espessuras ficam em pixels de tela (non-scaling-stroke),
+   então a linha continua fina no celular e no computador.
+   O halo é feito com camadas largas e transparentes, sem desfoque,
+   para ficar leve no iPhone. */
+.mapa-rota {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapa-rota-futura-halo { stroke: rgba(var(--luz), 0.08); stroke-width: 6px; }
+.mapa-rota-futura      { stroke: rgba(200, 165, 255, 0.4); stroke-width: 1.2px; }
+
+.mapa-rota-feita-halo-largo { stroke: rgba(var(--luz), 0.12); stroke-width: 12px; }
+.mapa-rota-feita-halo       { stroke: rgba(var(--luz), 0.3); stroke-width: 4px; }
+.mapa-rota-feita            { stroke: #eadcff; stroke-width: 1.8px; }
+
+/* Marcadores de Lisboa e Viracopos: ponto de luz discreto + nome pequeno */
+.mapa-marcador {
+  position: absolute;
+  z-index: 1;
+  width: 0;
+  height: 0;
+}
+
+.mapa-marcador-ponto {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--texto);
+  box-shadow: 0 0 0 3px rgba(var(--luz), 0.25), 0 0 14px 4px rgba(var(--luz), 0.45);
+}
+
+.mapa-marcador-nome {
+  position: absolute;
+  left: 12px;
+  top: -8px;
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.85);
+}
+
+.mapa-marcador-nome small {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(var(--luz-clara), 0.5);
+}
+
+/* Avião branco, com um brilho suave por trás */
+.mapa-aviao {
+  position: absolute;
+  z-index: 1;
+  width: 26px;
+  height: 24px;
+  filter: drop-shadow(0 0 6px rgba(var(--luz), 0.7));
+}
+
+.mapa-aviao-desenho {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: #ffffff;
 }
 
 .voo-legenda {

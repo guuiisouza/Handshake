@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { MAPA, CELULA } from './mapa'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import { ALTURA, CONTINENTES, GRADE, LARGURA, LISBOA, ROTA, VIRACOPOS } from './mapa'
 import './Voo.css'
 
 // Horarios do voo em UTC. Lisboa 09:00 (UTC+0) -> Viracopos 16:20 (UTC-3) = 19:20 UTC.
@@ -10,137 +10,198 @@ const POUSO = new Date('2026-11-27T19:20:00Z').getTime()
 const MODO_TESTE = true
 const PROGRESSO_TESTE = 0.45
 
-const LARGURA = 360
-const ALTURA = 252
+// ---------- Rota ----------
+// ROTA tem os pontos do caminho mais curto pelo globo, igualmente espaçados
+// em distância real. Por isso o progresso (0 a 1) vira um índice direto.
 
-const LISBOA = { x: 238, y: 75 }
-const CURVA = { x: 185, y: 50 }
-const VIRACOPOS = { x: 153, y: 214 }
+const TOTAL_PONTOS = ROTA.length / 2 - 1
+const pontoDaRota = (i: number) => ({ x: ROTA[i * 2], y: ROTA[i * 2 + 1] })
 
-const CORES_TERRA = ['#2b2b33', '#33333c', '#25252d']
-
-// Aviao visto de cima, apontando para a direita. '#' = claro, '+' = sombra.
-const DESENHO_AVIAO = [
-  '.........####.......',
-  '..........####......',
-  '...........####.....',
-  '...........####.....',
-  '..#........#####....',
-  '..###......#####....',
-  '..#################.',
-  '..##################',
-  '..+++++++++++++++++.',
-  '..+++......+++++....',
-  '..+........+++++....',
-  '...........++++.....',
-  '...........++++.....',
-  '..........++++......',
-  '.........++++.......',
-]
-const PIXEL_AVIAO = 1.7
-
-const ESTRELAS = [
-  [18, 28], [62, 16], [128, 34], [196, 18], [252, 44],
-  [310, 24], [344, 92], [96, 108], [210, 132], [330, 170],
-  [36, 162], [120, 196], [268, 206], [60, 232], [300, 240],
-]
-
-function pontoNaRota(t: number) {
-  const a = (1 - t) * (1 - t)
-  const b = 2 * (1 - t) * t
-  const c = t * t
+// Posição e direção (em graus) do avião para um progresso de 0 a 1
+function posicaoNaRota(progresso: number) {
+  const posicao = Math.min(Math.max(progresso, 0), 1) * TOTAL_PONTOS
+  const i = Math.min(Math.floor(posicao), TOTAL_PONTOS - 1)
+  const f = posicao - i
+  const a = pontoDaRota(i)
+  const b = pontoDaRota(i + 1)
   return {
-    x: a * LISBOA.x + b * CURVA.x + c * VIRACOPOS.x,
-    y: a * LISBOA.y + b * CURVA.y + c * VIRACOPOS.y,
+    x: a.x + (b.x - a.x) * f,
+    y: a.y + (b.y - a.y) * f,
+    angulo: (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI,
   }
 }
 
-function direcaoNaRota(t: number) {
-  const dx = 2 * (1 - t) * (CURVA.x - LISBOA.x) + 2 * t * (VIRACOPOS.x - CURVA.x)
-  const dy = 2 * (1 - t) * (CURVA.y - LISBOA.y) + 2 * t * (VIRACOPOS.y - CURVA.y)
-  return (Math.atan2(dy, dx) * 180) / Math.PI
+// Caminho SVG da rota inteira
+const TRACADO_COMPLETO = Array.from({ length: TOTAL_PONTOS + 1 }, (_, i) => {
+  const p = pontoDaRota(i)
+  return `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`
+}).join('')
+
+// Caminho SVG só do trecho já percorrido
+function tracadoPercorrido(progresso: number) {
+  const fim = posicaoNaRota(progresso)
+  const ultimo = Math.floor(Math.min(Math.max(progresso, 0), 1) * TOTAL_PONTOS)
+  let d = `M${ROTA[0]} ${ROTA[1]}`
+  for (let i = 1; i <= ultimo; i++) d += `L${ROTA[i * 2]} ${ROTA[i * 2 + 1]}`
+  return d + `L${fim.x} ${fim.y}`
 }
 
-function Continentes() {
-  const blocos = []
-  for (let linha = 0; linha < MAPA.length; linha++) {
-    for (let coluna = 0; coluna < MAPA[linha].length; coluna++) {
-      if (MAPA[linha][coluna] === '#') {
-        const cor = CORES_TERRA[(linha * 7 + coluna * 13) % CORES_TERRA.length]
-        blocos.push(
-          <rect
-            key={`t${linha}-${coluna}`}
-            x={coluna * CELULA}
-            y={linha * CELULA}
-            width={CELULA - 0.3}
-            height={CELULA - 0.3}
-            fill={cor}
-          />
-        )
-      }
-    }
+// ---------- Câmera ----------
+// A câmera é o pedaço do mapa que aparece na tela (centro + largura/altura,
+// em unidades do mapa). O mapa é bem maior que a tela; a câmera escolhe o
+// recorte. Na parte 3c, a rolagem vai mover esta câmera.
+
+type Ponto = { x: number; y: number }
+type Camera = { cx: number; cy: number; largura: number; altura: number }
+type Tela = { largura: number; altura: number }
+
+// Retângulo que envolve a rota inteira (Lisboa a Campinas)
+const CAIXA_ROTA = (() => {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+  for (let i = 0; i < ROTA.length; i += 2) {
+    x0 = Math.min(x0, ROTA[i]); x1 = Math.max(x1, ROTA[i])
+    y0 = Math.min(y0, ROTA[i + 1]); y1 = Math.max(y1, ROTA[i + 1])
   }
-  return <g>{blocos}</g>
-}
+  return { x0, y0, x1, y1 }
+})()
 
-function Estrelas() {
-  return (
-    <g>
-      {ESTRELAS.map(([x, y], i) => (
-        <rect key={`e${i}`} x={x} y={y} width="2" height="2" fill="#a97ad0" opacity="0.8" />
-      ))}
-    </g>
-  )
-}
-
-function Aviao({ x, y, angulo }: { x: number; y: number; angulo: number }) {
-  const largura = DESENHO_AVIAO[0].length * PIXEL_AVIAO
-  const altura = DESENHO_AVIAO.length * PIXEL_AVIAO
-  const pixels = []
-  for (let linha = 0; linha < DESENHO_AVIAO.length; linha++) {
-    for (let coluna = 0; coluna < DESENHO_AVIAO[linha].length; coluna++) {
-      const c = DESENHO_AVIAO[linha][coluna]
-      if (c === '#' || c === '+') {
-        pixels.push(
-          <rect
-            key={`a${linha}-${coluna}`}
-            x={coluna * PIXEL_AVIAO - largura / 2}
-            y={linha * PIXEL_AVIAO - altura / 2}
-            width={PIXEL_AVIAO}
-            height={PIXEL_AVIAO}
-            fill={c === '#' ? '#fbe9ff' : '#cf96ec'}
-          />
-        )
-      }
-    }
+// Câmera que mostra a área pedida inteira, com folga, e com a MESMA proporção
+// da tela (assim o mapa preenche tudo, sem faixas vazias). Nunca sai do mapa.
+function enquadrar(area: { x0: number; y0: number; x1: number; y1: number }, tela: Tela, folga = 0.22): Camera {
+  const larguraArea = area.x1 - area.x0
+  const alturaArea = area.y1 - area.y0
+  const margem = Math.max(larguraArea, alturaArea) * folga
+  let largura = larguraArea + margem * 2
+  let altura = alturaArea + margem * 2
+  const proporcaoTela = tela.largura / tela.altura
+  // aumenta o lado que falta para ficar com o formato da tela
+  if (largura / altura < proporcaoTela) largura = altura * proporcaoTela
+  else altura = largura / proporcaoTela
+  // não pode ser maior que o próprio mapa
+  const reducao = Math.max(largura / LARGURA, altura / ALTURA, 1)
+  largura /= reducao
+  altura /= reducao
+  // centraliza, sem deixar a câmera passar da borda do mapa
+  const limitar = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+  return {
+    cx: limitar((area.x0 + area.x1) / 2, largura / 2, LARGURA - largura / 2),
+    cy: limitar((area.y0 + area.y1) / 2, altura / 2, ALTURA - altura / 2),
+    largura,
+    altura,
   }
+}
+
+// Converte um ponto do mapa em pixels da tela, para posicionar os elementos
+// em HTML (marcadores, nomes e avião) por cima do desenho. Assim eles mantêm
+// o mesmo tamanho na tela, seja no iPhone ou no computador.
+// (Mesma conta do preserveAspectRatio "slice": preenche a tela e corta o excesso.)
+function naTela(p: Ponto, camera: Camera, tela: Tela) {
+  const escala = Math.max(tela.largura / camera.largura, tela.altura / camera.altura)
+  return {
+    left: `${(p.x - camera.cx) * escala + tela.largura / 2}px`,
+    top: `${(p.y - camera.cy) * escala + tela.altura / 2}px`,
+  }
+}
+
+// Acompanha o tamanho de um elemento na tela
+function useTamanho(ref: RefObject<HTMLElement | null>): Tela {
+  const [tela, setTela] = useState<Tela>({ largura: window.innerWidth, altura: window.innerHeight })
+  useEffect(() => {
+    const elemento = ref.current
+    if (!elemento) return
+    const observar = new ResizeObserver(([entrada]) => {
+      const { width, height } = entrada.contentRect
+      if (width > 0 && height > 0) setTela({ largura: width, altura: height })
+    })
+    observar.observe(elemento)
+    return () => observar.disconnect()
+  }, [ref])
+  return tela
+}
+
+// ---------- Desenhos ----------
+
+// Avião branco minimalista visto de cima, com o nariz apontando para a direita
+function Aviao() {
   return (
-    <g transform={`translate(${x} ${y}) rotate(${angulo})`}>
-      <g opacity="0.45" filter="url(#brilhoAviao)">{pixels}</g>
-      {pixels}
-    </g>
+    <svg className="mapa-aviao-desenho" viewBox="-13 -12 26 24" aria-hidden="true">
+      <path d="M12 0C12-1 10.5-1.6 9-1.6L2-1.6-3-11h-2.5l3 9.4H-8l-2.5-3.4H-12l1.5 4.2v1.6L-12 5h1.5L-8 1.6h5.5l-3 9.4H-3L2 1.6h7c1.5 0 3-.6 3-1.6Z" />
+    </svg>
   )
 }
 
-function BandeiraPortugal({ x, y }: { x: number; y: number }) {
+type PropsMarcador = { ponto: Ponto; nome: string; detalhe?: string; camera: Camera; tela: Tela }
+
+function Marcador({ ponto, nome, detalhe, camera, tela }: PropsMarcador) {
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <rect x="0" y="0" width="7" height="12" fill="#1d6b3a" />
-      <rect x="7" y="0" width="11" height="12" fill="#c8102e" />
-      <rect x="5" y="4" width="4" height="4" fill="#f5d547" />
-      <rect x="0" y="0" width="18" height="12" fill="none" stroke="#000000" strokeWidth="1" />
-    </g>
+    <div className="mapa-marcador" style={naTela(ponto, camera, tela)}>
+      <span className="mapa-marcador-ponto" />
+      <span className="mapa-marcador-nome">
+        {nome}
+        {detalhe && <small>{detalhe}</small>}
+      </span>
+    </div>
   )
 }
 
-function BandeiraBrasil({ x, y }: { x: number; y: number }) {
+function MapaVoo({ progresso }: { progresso: number }) {
+  const palco = useRef<HTMLDivElement>(null)
+  const tela = useTamanho(palco)
+  const aviao = posicaoNaRota(progresso)
+
+  // Por enquanto a câmera fica parada mostrando a rota inteira.
+  // Na parte 3c ela passa a ser controlada pela rolagem.
+  const camera = enquadrar(CAIXA_ROTA, tela)
+  const viewBox = [
+    camera.cx - camera.largura / 2,
+    camera.cy - camera.altura / 2,
+    camera.largura,
+    camera.altura,
+  ].join(' ')
+
   return (
-    <g transform={`translate(${x} ${y})`}>
-      <rect x="0" y="0" width="18" height="12" fill="#1d9b4b" />
-      <rect x="4" y="3" width="10" height="6" fill="#f5d547" />
-      <rect x="7" y="4" width="4" height="4" fill="#1d4ea8" />
-      <rect x="0" y="0" width="18" height="12" fill="none" stroke="#000000" strokeWidth="1" />
-    </g>
+    <div className="mapa-palco" ref={palco}>
+      <svg
+        className="mapa-desenho"
+        viewBox={viewBox}
+        preserveAspectRatio="xMidYMid slice"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="terra" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2a2733" />
+            <stop offset="1" stopColor="#1b1921" />
+          </linearGradient>
+          <radialGradient id="brilhoOceano" cx="0.55" cy="0.45" r="0.6">
+            <stop offset="0" stopColor="rgb(168, 92, 255)" stopOpacity="0.08" />
+            <stop offset="1" stopColor="rgb(168, 92, 255)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        <rect width={LARGURA} height={ALTURA} fill="url(#brilhoOceano)" />
+        <path className="mapa-grade" d={GRADE} />
+        <path className="mapa-terra" d={CONTINENTES} />
+
+        {/* rota que falta: fina e apagada, com halo bem leve */}
+        <path className="mapa-rota mapa-rota-futura-halo" d={TRACADO_COMPLETO} />
+        <path className="mapa-rota mapa-rota-futura" d={TRACADO_COMPLETO} />
+
+        {/* trecho percorrido: mais luminoso */}
+        <path className="mapa-rota mapa-rota-feita-halo-largo" d={tracadoPercorrido(progresso)} />
+        <path className="mapa-rota mapa-rota-feita-halo" d={tracadoPercorrido(progresso)} />
+        <path className="mapa-rota mapa-rota-feita" d={tracadoPercorrido(progresso)} />
+      </svg>
+
+      <Marcador ponto={LISBOA} nome="Lisboa" camera={camera} tela={tela} />
+      <Marcador ponto={VIRACOPOS} nome="Campinas" detalhe="Viracopos" camera={camera} tela={tela} />
+
+      <div
+        className="mapa-aviao"
+        style={{ ...naTela(aviao, camera, tela), transform: `translate(-50%, -50%) rotate(${aviao.angulo}deg)` }}
+      >
+        <Aviao />
+      </div>
+    </div>
   )
 }
 
@@ -160,8 +221,6 @@ function Voo({ onVoltar }: { onVoltar: () => void }) {
   const horas = Math.floor(falta / 3600000)
   const minutos = Math.floor((falta % 3600000) / 60000)
 
-  const aviao = pontoNaRota(progresso)
-  const angulo = direcaoNaRota(progresso)
   const chegou = agora >= POUSO
 
   const TOTAL_BLOCOS = 20
@@ -178,55 +237,7 @@ function Voo({ onVoltar }: { onVoltar: () => void }) {
           : 'Princesa, eu prometi que chegaria até você...'}
       </p>
 
-      <svg className="voo-mapa" viewBox={`0 0 ${LARGURA} ${ALTURA}`}>
-        <defs>
-          <filter id="brilhoAviao" x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="2.5" />
-          </filter>
-          <filter id="brilhoRota" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="3" />
-          </filter>
-        </defs>
-
-        <Estrelas />
-        <Continentes />
-
-        <path
-          d={`M ${LISBOA.x} ${LISBOA.y} Q ${CURVA.x} ${CURVA.y} ${VIRACOPOS.x} ${VIRACOPOS.y}`}
-          fill="none"
-          stroke="#c04dff"
-          strokeWidth="5"
-          opacity="0.35"
-          filter="url(#brilhoRota)"
-        />
-        <path
-          d={`M ${LISBOA.x} ${LISBOA.y} Q ${CURVA.x} ${CURVA.y} ${VIRACOPOS.x} ${VIRACOPOS.y}`}
-          fill="none"
-          stroke="#f0b8ff"
-          strokeWidth="2"
-          strokeDasharray="5 6"
-          strokeLinecap="square"
-        />
-
-        <rect x={LISBOA.x - 9} y={LISBOA.y - 9} width="18" height="18" fill="#c04dff" opacity="0.3" />
-        <rect x={LISBOA.x - 5} y={LISBOA.y - 5} width="10" height="10" fill="#f6e3ff" />
-        <text x={LISBOA.x + 16} y={LISBOA.y - 2} fill="#ffffff" fontSize="15" fontFamily="'Pixelify Sans', sans-serif">
-          Lisboa
-        </text>
-        <BandeiraPortugal x={LISBOA.x + 16} y={LISBOA.y + 4} />
-
-        <rect x={VIRACOPOS.x - 9} y={VIRACOPOS.y - 9} width="18" height="18" fill="#c04dff" opacity="0.3" />
-        <rect x={VIRACOPOS.x - 5} y={VIRACOPOS.y - 5} width="10" height="10" fill="#f6e3ff" />
-        <text x={VIRACOPOS.x + 16} y={VIRACOPOS.y - 2} fill="#ffffff" fontSize="15" fontFamily="'Pixelify Sans', sans-serif">
-          São Paulo
-        </text>
-        <text x={VIRACOPOS.x + 38} y={VIRACOPOS.y + 15} fill="#c8a8e0" fontSize="10">
-          (Viracopos)
-        </text>
-        <BandeiraBrasil x={VIRACOPOS.x + 16} y={VIRACOPOS.y + 4} />
-
-        <Aviao x={aviao.x} y={aviao.y} angulo={angulo} />
-      </svg>
+      <MapaVoo progresso={progresso} />
 
       <p className="voo-legenda">A cada minuto, mais perto de você.</p>
 
