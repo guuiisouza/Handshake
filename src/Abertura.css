@@ -5,7 +5,7 @@
 
 .abertura-nova {
   position: relative;
-  height: 240vh;
+  height: 260vh;
   /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -17,10 +17,10 @@
 
 /* Em telas de toque (iPhone, iPad) a abertura é mais curta: cada arrastada
    de dedo anda menos que a rodinha do mouse, então uma rolada curta já faz
-   a passagem (0,7 tela em vez de 1,4). */
+   a passagem (0,85 tela em vez de 1,6). */
 @media (pointer: coarse) {
   .abertura-nova {
-    height: 170vh;
+    height: 185vh;
   }
 }
 

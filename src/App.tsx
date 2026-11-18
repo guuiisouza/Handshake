@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Abertura from './Abertura'
-import Cena from './Cena'
 import Voo from './Voo'
 import Galeria from './Galeria'
 import Instalacao, { estaInstalado } from './Instalacao'
@@ -24,10 +23,7 @@ function App() {
     <main className="pagina">
       <Abertura />
 
-      <Cena>
-        <p className="frase-grande">Princesa, eu prometi que chegaria até você...</p>
-      </Cena>
-
+      {/* a frase "Princesa, eu prometi que chegaria até você..." agora abre o mapa */}
       <Voo />
 
       <Galeria />

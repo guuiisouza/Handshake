@@ -1,14 +1,12 @@
 /* ---------- Tela do voo ----------
-   O mapa ocupa a tela inteira, de borda a borda. Os textos ficam em duas
-   faixas (em cima e embaixo) com o fundo escurecido, e a câmera do mapa
-   mantém a rota e os marcadores FORA dessas faixas: nada de texto em cima
-   da rota, e tudo fácil de ler. */
+   A seção é mais alta que a tela. Dentro dela, o "palco" fica grudado na tela
+   (position: sticky) enquanto a pessoa rola, e a rolagem move a câmera do mapa.
+   Os textos ficam em faixas (em cima e embaixo) com o fundo escurecido; a
+   câmera mantém a rota fora delas, e a rota se apaga antes de chegar nelas. */
 
 .voo {
   position: relative;
-  height: 100vh;
-  height: 100lvh;
-  overflow: hidden;
+  height: 320vh; /* computador: a passagem leva 2,2 telas de rolagem */
   background: var(--preto);
   text-align: center;
   /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
@@ -16,27 +14,146 @@
   margin-left: calc(50% - 50vw);
 }
 
+/* Emenda com a abertura: um degradê que sobe por cima do pé da abertura e
+   o escurece até o preto. Assim o fim da névoa da abertura não termina numa
+   linha reta; o mapa continua a partir do escuro, sem corte seco. */
+.voo::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 35vh;
+  background: linear-gradient(to bottom, rgba(11, 7, 16, 0) 0%, var(--preto) 100%);
+  pointer-events: none;
+}
+
+/* Telas de toque (iPhone, iPad): passagem mais curta, como na abertura */
+@media (pointer: coarse) {
+  .voo {
+    height: 230vh; /* 1,3 tela de rolagem */
+  }
+}
+
+.voo-palco {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100lvh;
+  overflow: hidden;
+}
+
+/* Ordem das camadas, de baixo para cima:
+   continentes -> névoa -> rota/marcadores/avião -> véu -> textos */
+
+.mapa-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.voo-nevoa {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Rota, marcadores e avião. A máscara apaga tudo suavemente perto das faixas
+   de texto que estiverem visíveis (os tamanhos vêm do Voo.tsx). */
+.mapa-camada {
+  --mascara-topo: 0px;
+  --mascara-base: 0px;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent var(--mascara-topo),
+    #000 calc(var(--mascara-topo) + 28px),
+    #000 calc(100% - var(--mascara-base) - 28px),
+    transparent calc(100% - var(--mascara-base))
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent var(--mascara-topo),
+    #000 calc(var(--mascara-topo) + 28px),
+    #000 calc(100% - var(--mascara-base) - 28px),
+    transparent calc(100% - var(--mascara-base))
+  );
+}
+
+/* Véu escuro com o mesmo fundo da abertura: enquanto o mapa entra na tela,
+   ele continua a abertura e vai se abrindo, sem corte seco */
+.voo-veu {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 90% at 50% 44%, var(--carvao) 0%, var(--preto) 62%);
+}
+
+/* Degradê preso à borda de cima do mapa: começa no mesmo preto do fim da
+   abertura, então a troca de cena não mostra linha nem mudança de cor */
+.voo-veu-topo {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0.6) 45%, rgba(11, 7, 16, 0) 100%);
+}
+
+/* ---------- Textos ---------- */
+
 /* Sombra comum aos textos sobre o mapa: garante leitura em qualquer ponto */
+.voo-frase-caixa,
 .voo-topo,
 .voo-base,
 .mapa-marcador-nome {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 16px var(--preto);
 }
 
-/* Faixa de cima: estado do voo e contagem */
-.voo-topo {
+.voo-frase-caixa,
+.voo-topo,
+.voo-base {
   position: absolute;
-  z-index: 2;
-  top: 0;
+  z-index: 4;
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: none;
+  opacity: 0; /* o Voo.tsx mostra cada faixa na hora certa da rolagem */
+}
+
+/* Frase que abre o mapa, sobre Lisboa de perto */
+.voo-frase-caixa {
+  top: 0;
+  padding: calc(48px + env(safe-area-inset-top)) 24px 44px;
+  background: linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0.85) 50%, rgba(11, 7, 16, 0) 100%);
+}
+
+.voo-frase {
+  width: min(88vw, 30rem);
+  font-size: clamp(1.45rem, 5.2vw, 2.1rem);
+  line-height: 1.35;
+  font-style: italic;
+  color: var(--texto);
+}
+
+/* Faixa de cima: estado do voo e contagem */
+.voo-topo {
+  top: 0;
   gap: 8px;
   padding: calc(32px + env(safe-area-inset-top)) 24px 40px;
   background: linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0.88) 55%, rgba(11, 7, 16, 0) 100%);
-  pointer-events: none;
 }
 
 .voo-rotulo {
@@ -64,18 +181,10 @@
 
 /* Faixa de baixo: horários e aviso de estimativa */
 .voo-base {
-  position: absolute;
-  z-index: 2;
   bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 4px;
   padding: 36px 24px calc(22px + env(safe-area-inset-bottom));
   background: linear-gradient(to top, var(--preto) 0%, rgba(11, 7, 16, 0.85) 55%, rgba(11, 7, 16, 0) 100%);
-  pointer-events: none;
 }
 
 .voo-horarios {
@@ -91,22 +200,6 @@
 }
 
 /* ---------- Mapa ---------- */
-
-/* O palco do mapa cobre a tela inteira, atrás dos textos.
-   O SVG usa preserveAspectRatio "slice": sempre preenche tudo e corta o excesso. */
-.mapa-palco {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.mapa-desenho {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-}
 
 /* Linhas de latitude/longitude: quase invisíveis, só dão profundidade */
 .mapa-grade {
@@ -126,7 +219,7 @@
 }
 
 /* Rota: as espessuras ficam em pixels de tela (non-scaling-stroke),
-   então a linha continua fina no celular e no computador.
+   então a linha continua fina com qualquer zoom da câmera.
    O halo é feito com camadas largas e transparentes, sem desfoque,
    para ficar leve no iPhone. */
 .mapa-rota {
@@ -143,12 +236,15 @@
 .mapa-rota-feita-halo       { stroke: rgba(var(--luz), 0.3); stroke-width: 4px; }
 .mapa-rota-feita            { stroke: #eadcff; stroke-width: 1.8px; }
 
-/* Marcadores de Lisboa e São Paulo: ponto de luz discreto + nome pequeno */
+/* Marcadores de Lisboa e São Paulo: ponto de luz discreto + nome pequeno.
+   A posição na tela é aplicada pelo Voo.tsx (transform), a cada quadro. */
 .mapa-marcador {
   position: absolute;
-  z-index: 1;
+  left: 0;
+  top: 0;
   width: 0;
   height: 0;
+  will-change: transform;
 }
 
 .mapa-marcador-ponto {
@@ -178,14 +274,15 @@
   left: 22px;
 }
 
-
 /* Avião branco, com um brilho suave por trás */
 .mapa-aviao {
   position: absolute;
-  z-index: 1;
+  left: 0;
+  top: 0;
   width: 26px;
   height: 24px;
   filter: drop-shadow(0 0 6px rgba(var(--luz), 0.7));
+  will-change: transform;
 }
 
 .mapa-aviao-desenho {
