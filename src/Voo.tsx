@@ -127,27 +127,24 @@ function Aviao() {
   )
 }
 
-type PropsMarcador = { ponto: Ponto; nome: string; detalhe?: string; camera: Camera; tela: Tela; comAviao: boolean }
+type PropsMarcador = { ponto: Ponto; nome: string; camera: Camera; tela: Tela; comAviao: boolean }
 
 // comAviao: o avião está parado neste marcador; o nome se afasta para não ficar embaixo da asa
-function Marcador({ ponto, nome, detalhe, camera, tela, comAviao }: PropsMarcador) {
+function Marcador({ ponto, nome, camera, tela, comAviao }: PropsMarcador) {
   return (
     <div className={comAviao ? 'mapa-marcador com-aviao' : 'mapa-marcador'} style={naTela(ponto, camera, tela)}>
       <span className="mapa-marcador-ponto" />
-      <span className="mapa-marcador-nome">
-        {nome}
-        {detalhe && <small>{detalhe}</small>}
-      </span>
+      <span className="mapa-marcador-nome">{nome}</span>
     </div>
   )
 }
 
 // Folgas em pixels em volta da rota: laterais, espaço para o nome "Lisboa"
-// (à direita do ponto mais a leste da rota) e para "São Paulo / Viracopos"
-// (abaixo do ponto mais ao sul).
+// (à direita do ponto mais a leste da rota) e para o nome "São Paulo"
+// (perto do ponto mais ao sul).
 const FOLGA_LATERAL = 28
 const FOLGA_NOME_LISBOA = 110
-const FOLGA_NOME_CAMPINAS = 40
+const FOLGA_NOME_SAO_PAULO = 24
 const FOLGA_TEXTO = 20
 
 type PropsMapa = { estado: EstadoVoo; topo: number; base: number }
@@ -162,7 +159,7 @@ function MapaVoo({ estado, topo, base }: PropsMapa) {
   // faixas de texto. Na parte 3c ela passa a ser controlada pela rolagem.
   const camera = enquadrar(CAIXA_ROTA, tela, {
     topo: topo + FOLGA_TEXTO,
-    base: base + FOLGA_TEXTO + FOLGA_NOME_CAMPINAS,
+    base: base + FOLGA_TEXTO + FOLGA_NOME_SAO_PAULO,
     esquerda: FOLGA_LATERAL,
     direita: FOLGA_LATERAL + FOLGA_NOME_LISBOA,
   })
@@ -217,7 +214,6 @@ function MapaVoo({ estado, topo, base }: PropsMapa) {
       <Marcador
         ponto={VIRACOPOS}
         nome="São Paulo"
-        detalhe="Viracopos"
         camera={camera}
         tela={tela}
         comAviao={estado.fase === 'depois'}
@@ -298,7 +294,7 @@ function Voo() {
       </header>
 
       <footer className="voo-base" ref={refBase}>
-        <p className="voo-horarios">Partida 27/11 às 09:00 em Lisboa · Chegada às 16:20 em São Paulo</p>
+        <p className="voo-horarios">Partida 27/11 às 09:00 em Lisboa · Chegada às 16:20 em São&nbsp;Paulo</p>
         <p className="voo-aviso">Trajeto estimado pelos horários previstos. Não é rastreamento em tempo real.</p>
       </footer>
     </section>
