@@ -15,6 +15,15 @@
   background: var(--preto);
 }
 
+/* Em telas de toque (iPhone, iPad) a abertura é mais curta: cada arrastada
+   de dedo anda menos que a rodinha do mouse, então uma rolada curta já faz
+   a passagem (0,7 tela em vez de 1,4). */
+@media (pointer: coarse) {
+  .abertura-nova {
+    height: 170vh;
+  }
+}
+
 .abertura-palco {
   position: sticky;
   top: 0;

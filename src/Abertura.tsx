@@ -97,16 +97,17 @@ function Abertura() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
 
   // A câmera se aproxima da obsidiana e ela se dissolve na névoa...
-  const escala = useTransform(scrollYProgress, [0, 0.6], [1, 1.5])
-  const subir = useTransform(scrollYProgress, [0, 0.6], [0, -30])
-  const obsidianaOpacidade = useTransform(scrollYProgress, [0.25, 0.6], [1, 0])
+  const escala = useTransform(scrollYProgress, [0, 0.55], [1, 1.5])
+  const subir = useTransform(scrollYProgress, [0, 0.55], [0, -30])
+  const obsidianaOpacidade = useTransform(scrollYProgress, [0.2, 0.55], [1, 0])
   // ...a dica some logo no começo da rolagem...
-  const dicaOpacidade = useTransform(scrollYProgress, [0, 0.12], [1, 0])
+  const dicaOpacidade = useTransform(scrollYProgress, [0, 0.1], [1, 0])
   // ...a névoa fica mais densa no meio da passagem...
-  const nevoaOpacidade = useTransform(scrollYProgress, [0, 0.5, 1], [0.85, 1, 0.75])
-  // ...e a frase surge de dentro da luz.
-  const fraseOpacidade = useTransform(scrollYProgress, [0.45, 0.72], [0, 1])
-  const fraseY = useTransform(scrollYProgress, [0.45, 0.8], [24, 0])
+  const nevoaOpacidade = useTransform(scrollYProgress, [0, 0.45, 1], [0.85, 1, 0.75])
+  // ...e a frase surge de dentro da luz. Depois de 0.65 ela fica inteira
+  // na tela (cerca de 35% da passagem), com tempo para ser lida.
+  const fraseOpacidade = useTransform(scrollYProgress, [0.4, 0.65], [0, 1])
+  const fraseY = useTransform(scrollYProgress, [0.4, 0.7], [24, 0])
 
   return (
     <section ref={ref} className="abertura-nova">
