@@ -109,6 +109,20 @@
   background: linear-gradient(to bottom, var(--preto) 0%, rgba(11, 7, 16, 0.6) 45%, rgba(11, 7, 16, 0) 100%);
 }
 
+/* Degradê alto na parte de baixo, que aparece no fim do mapa: escurece o mapa
+   aos poucos até o mesmo preto da galeria (sem borda marcada na troca) */
+.voo-veu-base {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 55%;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(11, 7, 16, 0) 0%, rgba(11, 7, 16, 0.75) 55%, var(--preto) 100%);
+}
+
 /* ---------- Textos ---------- */
 
 /* Sombra comum aos textos sobre o mapa: garante leitura em qualquer ponto */

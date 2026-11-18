@@ -1,39 +1,324 @@
+/* ---------- Galeria ----------
+   iPhone: quatro telas, duas Polaroids em cada.
+   Computador: as oito sobre uma mesa escura, com luz violeta vinda de cima.
+   A moldura de Polaroid já vem desenhada em cada imagem (com fundo
+   transparente), então a sombra usa drop-shadow e segue o formato dela. */
+
 .galeria {
+  position: relative;
+  /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  text-align: center;
+  /* luz violeta suave no meio; a borda de cima continua preta (emenda com o mapa) */
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 48%, rgba(var(--luz), 0.09), transparent 70%),
+    var(--preto);
+}
+
+/* Fundo fixo da galeria (a montanha): fica grudado na tela enquanto a galeria
+   passa, e as fotos rolam por cima dele */
+.galeria-fundo {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100lvh;
+  margin-bottom: -100vh;
+  margin-bottom: -100lvh;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* tudo da galeria fica por cima da montanha */
+.galeria-cabecalho,
+.galeria-par,
+.galeria-mesa {
+  position: relative;
+  z-index: 1;
+}
+
+.galeria-cabecalho {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30vh;
-  padding: 20vh 24px;
+  gap: 10px;
+  padding: 16vh 24px 2vh;
 }
 
 .galeria-titulo {
   font-family: 'Pixelify Sans', sans-serif;
-  font-size: 2.2rem;
-  color: #f0d4ff;
-  letter-spacing: 3px;
+  font-size: clamp(1.9rem, 6vw, 2.8rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--texto);
+  text-shadow: 0 0 24px rgba(var(--luz), 0.35);
 }
 
+.galeria-dica {
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.55);
+}
+
+/* ---------- Polaroid ---------- */
+
 .polaroid {
+  position: relative;
+  display: block;
   width: 100%;
-  max-width: 340px;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* sombra natural de papel: uma larga e suave + uma curta e mais escura */
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.55)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  transition: filter 0.35s ease;
 }
 
 .polaroid img {
-  width: 100%;
-  height: auto;
   display: block;
-  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.8));
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.polaroid figcaption {
-  max-width: 300px;
-  font-size: 1.15rem;
+.polaroid:focus-visible {
+  outline: 2px solid rgba(var(--luz-clara), 0.8);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+/* Lugar guardado enquanto a foto está ampliada */
+.polaroid-vaga {
+  width: 100%;
+}
+
+/* Reflexo de luz passando pelo papel fotográfico (mesmo estilo da obsidiana).
+   A máscara é a própria foto: o brilho só aparece sobre a Polaroid. */
+.polaroid-brilho {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.polaroid-brilho-faixa {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 60%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.16) 48%,
+    rgba(var(--luz-clara), 0.1) 54%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  animation: brilho-papel 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes brilho-papel {
+  0%, 35%   { transform: translateX(-120%); }
+  75%, 100% { transform: translateX(200%); }
+}
+
+/* ---------- iPhone: duas fotos por tela ---------- */
+
+.galeria-par {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6vh 24px;
+}
+
+/* conteúdo do par: é ele que se afasta e se aproxima na troca de cena */
+.par-cena {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  will-change: transform, opacity;
+}
+
+.par-lugar {
+  margin: 0;
+  /* sem a frase embaixo, as fotos ficam um pouco maiores */
+  width: min(70vw, 36vh, 340px);
+  width: min(70vw, 36svh, 340px);
+}
+
+/* uma foto um pouco à esquerda, a outra um pouco à direita.
+   (Nomes com "par-" para não colidir com a face .esquerda da obsidiana.) */
+.par-lugar {
+  position: relative;
+}
+.par-esquerda { left: -8%; }
+.par-direita  { left: 8%; }
+
+
+/* ---------- Computador: a mesa ---------- */
+
+.galeria-cabecalho:has(+ .galeria-mesa) {
+  padding: 9vh 24px 0;
+}
+
+.galeria-mesa {
+  position: relative;
+  height: max(560px, 84vh);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mesa-lugar {
+  position: absolute;
+  width: clamp(170px, 17.5vw, 300px);
+}
+
+/* passar o mouse: a foto sobe (Galeria.tsx) e fica mais iluminada */
+.mesa-lugar .polaroid:hover {
+  filter: brightness(1.08) drop-shadow(0 26px 28px rgba(0, 0, 0, 0.6)) drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+}
+
+/* com uma foto ampliada, a mesa recua um pouco */
+.galeria.com-ampliada .galeria-mesa {
+  transform: scale(0.97);
+}
+
+/* ---------- Foto ampliada ---------- */
+
+.ampliada {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overscroll-behavior: contain;
+}
+
+/* fundo escurece e desfoca de leve */
+.ampliada-fundo {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 4, 10, 0.78);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.ampliada-conteudo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 24px;
+  pointer-events: none; /* clicar fora da foto fecha */
+}
+
+.polaroid-ampliada {
+  width: min(86vw, 56vh, 600px);
+  width: min(86vw, 56svh, 600px);
+  cursor: default;
+  pointer-events: auto;
+  /* mais profundidade quando está em destaque */
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.7)) drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5));
+}
+
+.ampliada-frase {
+  max-width: min(88vw, 32rem);
+  text-align: center;
+  font-size: clamp(1.05rem, 4vw, 1.3rem);
   line-height: 1.5;
   font-style: italic;
-  color: #f3eaff;
+  color: var(--texto);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ampliada-controles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ampliada-fechar {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 16px;
+}
+
+.ampliada-navegacao {
+  position: absolute;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.ampliada-botao {
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--luz-clara), 0.25);
+  background: rgba(11, 7, 16, 0.55);
+  color: var(--texto);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.ampliada-botao:hover {
+  background: rgba(var(--luz), 0.18);
+  border-color: rgba(var(--luz-clara), 0.45);
+}
+
+.ampliada-botao:focus-visible {
+  outline: 2px solid rgba(var(--luz-clara), 0.8);
+  outline-offset: 3px;
+}
+
+.ampliada-botao svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ampliada-contador {
+  min-width: 4.5em;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  color: rgba(var(--luz-clara), 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Menos movimento ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .polaroid-brilho-faixa {
+    animation: none;
+    display: none;
+  }
+  .galeria-mesa {
+    transition: none;
+  }
 }

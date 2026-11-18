@@ -29,7 +29,8 @@ const LINHA = {
   pertoDeLisboa: 0.12, // a câmera fica perto de Lisboa enquanto a frase está na tela
   rotaInteira: 0.55,   // termina de se afastar: a rota inteira aparece
   segura: 0.65,        // segura a rota inteira um pouco
-  final: 0.95,         // chega ao enquadramento final do estado do voo
+  final: 0.88,         // chega ao enquadramento final do estado do voo
+  saida: 0.92,         // a parte de baixo começa a escurecer, emendando com a galeria
 }
 
 // Folgas em pixels em volta da rota (laterais, nome "Lisboa" à direita do
@@ -177,6 +178,7 @@ function Voo() {
   const nevoa = useRef<HTMLDivElement>(null)
   const veu = useRef<HTMLDivElement>(null)
   const veuTopo = useRef<HTMLDivElement>(null)
+  const veuBase = useRef<HTMLDivElement>(null)
   const frase = useRef<HTMLDivElement>(null)
   const topo = useRef<HTMLElement>(null)
   const base = useRef<HTMLElement>(null)
@@ -251,6 +253,9 @@ function Voo() {
       // a borda de cima do mapa fica no mesmo preto do fim da abertura enquanto
       // está visível (sem linha na emenda) e só se dissolve depois que a tela gruda
       opacidade(veuTopo.current, 1 - faixa(p, 0, 0.12))
+      // saída: a parte de baixo escurece aos poucos até o preto da galeria,
+      // para a troca de cena não parecer um corte
+      opacidade(veuBase.current, faixa(p, LINHA.saida, 1))
       opacidade(frase.current, opFrase)
       opacidade(topo.current, opTextos)
       opacidade(base.current, opTextos)
@@ -320,6 +325,7 @@ function Voo() {
 
         <div ref={veu} className="voo-veu" aria-hidden="true" />
         <div ref={veuTopo} className="voo-veu-topo" aria-hidden="true" />
+        <div ref={veuBase} className="voo-veu-base" aria-hidden="true" />
 
         <div ref={frase} className="voo-frase-caixa">
           <p className="voo-frase">Princesa, eu prometi que chegaria até você...</p>

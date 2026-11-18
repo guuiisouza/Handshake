@@ -1,0 +1,102 @@
+/* ---------- Montanha ao fundo da galeria ----------
+   Ocupa a parte de baixo da tela, atrás das fotos, e se dissolve no preto.
+   É escura e meio transparente de propósito: não pode competir com as fotos. */
+
+.montanha {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62%;
+  pointer-events: none;
+  /* permite usar o tamanho desta caixa (cqw/cqh) para achar o cume na tela */
+  container-type: size;
+}
+
+/* Cada camada (cordilheira de trás e pico) ocupa a caixa inteira e é movida
+   pelo parallax (Montanha.tsx). Crescem a partir da base. */
+.montanha-camada {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.montanha-desenho {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0.55;
+  /* a base da montanha some no escuro (só o desenho; a neve soprada fica livre) */
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 38%);
+  mask-image: linear-gradient(to top, transparent 0%, #000 38%);
+}
+
+.montanha-atras  { fill: url(#montanhaAtras); opacity: 0.55; }
+.montanha-corpo  { fill: url(#montanhaCorpo); }
+.montanha-sombra { fill: rgba(0, 0, 0, 0.28); }
+.montanha-neve   { fill: url(#montanhaNeve); }
+
+.montanha-crista {
+  fill: none;
+  stroke: rgba(var(--luz), 0.35);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ---------- Neve soprada pelo vento ----------
+   É a névoa do site (Nevoa.tsx), recortada em forma de "bandeira" saindo do cume.
+   O cume fica no ponto (560, 58) do desenho. Com o desenho preenchendo a
+   caixa ("slice", alinhado embaixo), a escala é o maior entre largura/1000
+   e altura/460 — daí as contas abaixo, que põem a bandeira exatamente no cume. */
+.montanha-vento {
+  --s: max(0.1cqw, calc(100cqh / 460));
+  position: absolute;
+  left: calc(50% + 52 * var(--s)); /* começa um pouco antes, encostada no cume */
+  top: calc(100% - 342 * var(--s) - 55 * var(--s));
+  width: calc(440 * var(--s));
+  height: calc(110 * var(--s));
+  transform: rotate(-6deg);
+  transform-origin: 0 50%;
+  /* mais visível nos vãos entre as cenas da galeria (--vao vem do Galeria.tsx) */
+  opacity: calc(0.55 + 0.4 * var(--vao, 0));
+  filter: brightness(1.5); /* neve: um pouco mais clara que a névoa das outras cenas */
+  /* formato de "bandeira": fina no cume, abrindo com o vento e sumindo aos
+     poucos longe dele. A máscara é uma imagem com as bordas já desfocadas
+     (desenhada uma vez), então a fumaça não termina em linha reta. */
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.45' stop-color='%23fff' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cfilter id='f' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeGaussianBlur stdDeviation='5'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M0 45 L100 6 L100 94 L0 55Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.45' stop-color='%23fff' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cfilter id='f' x='-30%25' y='-30%25' width='160%25' height='160%25'%3E%3CfeGaussianBlur stdDeviation='5'/%3E%3C/filter%3E%3C/defs%3E%3Cpath d='M0 45 L100 6 L100 94 L0 55Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* ---------- Nuvem dos vãos (iPhone) ----------
+   O mesmo sistema da neve soprada (Nevoa.tsx, mesmo brilho de neve), em forma
+   de nuvem macia. O Montanha.tsx a faz nascer pequena no cume e crescer até o
+   meio da tela nos vãos; --nuvem (0 a 1) controla o quanto ela aparece. */
+.montanha-nuvem {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 130cqw;
+  height: 72cqh;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  opacity: var(--nuvem, 0);
+  filter: brightness(2.2);
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 0%, rgba(0, 0, 0, 0.7) 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 0%, rgba(0, 0, 0, 0.7) 45%, transparent 100%);
+}
+
+/* só a fumaça: sem os brilhos de fundo da névoa (eles são para telas inteiras) */
+.montanha-vento .nevoa-luz,
+.montanha-vento .nevoa-fonte,
+.montanha-nuvem .nevoa-luz,
+.montanha-nuvem .nevoa-fonte {
+  display: none;
+}
