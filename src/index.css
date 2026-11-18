@@ -15,10 +15,13 @@
   --carvao: #120c1a;            /* cinza carvão do fundo iluminado */
 }
 
-/* Evita rolagem para os lados quando uma cena ocupa a tela inteira */
+/* Evita rolagem para os lados quando uma cena ocupa a tela inteira.
+   O fundo é o mesmo do body (e do ícone do app), para nenhuma fresta destoar,
+   inclusive atrás da barra de status e do indicador de início do iPhone. */
 html {
   overflow-x: hidden;
   overflow-x: clip;
+  background: var(--preto);
 }
 
 * {

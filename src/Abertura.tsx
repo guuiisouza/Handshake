@@ -111,7 +111,9 @@ function Abertura() {
   return (
     <section ref={ref} className="abertura-nova">
       <div className="abertura-palco">
-        <Nevoa style={{ opacity: nevoaOpacidade }} />
+        <div className="abertura-fundo">
+          <Nevoa style={{ opacity: nevoaOpacidade }} />
+        </div>
 
         <motion.div
           className="abertura-objeto"

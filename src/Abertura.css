@@ -9,18 +9,36 @@
   /* ocupa a largura toda da tela, mesmo dentro da coluna estreita da página */
   width: 100vw;
   margin-left: calc(50% - 50vw);
+  /* corta o que passar das bordas da abertura (o fundo estendido abaixo),
+     sem atrapalhar o "palco grudado" (clip não cria rolagem própria) */
+  overflow: clip;
+  background: var(--preto);
 }
 
 .abertura-palco {
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100svh; /* no iPhone, desconta a barra do Safari */
-  overflow: hidden;
+  height: 100lvh; /* altura maior da tela: vai até embaixo, sem faixa */
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Gradiente e névoa ficam numa camada própria que DESCE além do fim do palco,
+   pela altura da barra de status + área do indicador de início.
+   Assim, mesmo que o iPhone (aberto pelo ícone) calcule a altura da tela
+   menor do que ela é, o fundo vai até a borda de baixo. Quando a altura vem
+   certa, essa sobra fica fora da tela. */
+.abertura-fundo {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * (env(safe-area-inset-top) + env(safe-area-inset-bottom)));
   background: radial-gradient(ellipse 120% 90% at 50% 44%, var(--carvao) 0%, var(--preto) 62%);
+  pointer-events: none;
 }
 
 .abertura-objeto {
