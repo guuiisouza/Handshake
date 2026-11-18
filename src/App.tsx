@@ -28,7 +28,7 @@ function App() {
         <p className="frase-grande">Princesa, eu prometi que chegaria até você...</p>
       </Cena>
 
-      <Voo onVoltar={() => {}} />
+      <Voo />
 
       <Galeria />
     </main>

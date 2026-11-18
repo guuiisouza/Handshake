@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { ALTURA, CONTINENTES, GRADE, LARGURA, LISBOA, ROTA, VIRACOPOS } from './mapa'
+import { agora, estadoDoVoo, formatarDuracao, type EstadoVoo } from './vooTempo'
 import './Voo.css'
-
-// Horarios do voo em UTC. Lisboa 09:00 (UTC+0) -> Viracopos 16:20 (UTC-3) = 19:20 UTC.
-const DECOLAGEM = new Date('2026-11-27T09:00:00Z').getTime()
-const POUSO = new Date('2026-11-27T19:20:00Z').getTime()
-
-// Deixe true para ver o aviao no meio da rota. Troque para false antes de entregar.
-const MODO_TESTE = true
-const PROGRESSO_TESTE = 0.45
 
 // ---------- Rota ----------
 // ROTA tem os pontos do caminho mais curto pelo globo, igualmente espaçados
@@ -55,7 +48,7 @@ type Ponto = { x: number; y: number }
 type Camera = { cx: number; cy: number; largura: number; altura: number }
 type Tela = { largura: number; altura: number }
 
-// Retângulo que envolve a rota inteira (Lisboa a Campinas)
+// Retângulo que envolve a rota inteira (Lisboa a São Paulo)
 const CAIXA_ROTA = (() => {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
   for (let i = 0; i < ROTA.length; i += 2) {
@@ -65,27 +58,31 @@ const CAIXA_ROTA = (() => {
   return { x0, y0, x1, y1 }
 })()
 
-// Câmera que mostra a área pedida inteira, com folga, e com a MESMA proporção
-// da tela (assim o mapa preenche tudo, sem faixas vazias). Nunca sai do mapa.
-function enquadrar(area: { x0: number; y0: number; x1: number; y1: number }, tela: Tela, folga = 0.22): Camera {
-  const larguraArea = area.x1 - area.x0
-  const alturaArea = area.y1 - area.y0
-  const margem = Math.max(larguraArea, alturaArea) * folga
-  let largura = larguraArea + margem * 2
-  let altura = alturaArea + margem * 2
-  const proporcaoTela = tela.largura / tela.altura
-  // aumenta o lado que falta para ficar com o formato da tela
-  if (largura / altura < proporcaoTela) largura = altura * proporcaoTela
-  else altura = largura / proporcaoTela
-  // não pode ser maior que o próprio mapa
-  const reducao = Math.max(largura / LARGURA, altura / ALTURA, 1)
-  largura /= reducao
-  altura /= reducao
-  // centraliza, sem deixar a câmera passar da borda do mapa
+// Espaço da tela (em pixels) que a rota NÃO pode ocupar: as faixas de texto
+// em cima e embaixo, as laterais e o espaço do nome "Lisboa" à direita.
+type Livre = { topo: number; base: number; esquerda: number; direita: number }
+
+// Câmera que encaixa a área pedida dentro do espaço livre da tela (longe dos
+// textos), preenchendo a tela inteira com mapa, sem faixas vazias.
+// A câmera tem sempre o formato da tela e nunca sai das bordas do mapa.
+function enquadrar(area: { x0: number; y0: number; x1: number; y1: number }, tela: Tela, livre: Livre): Camera {
+  const larguraLivre = Math.max(tela.largura - livre.esquerda - livre.direita, 60)
+  const alturaLivre = Math.max(tela.altura - livre.topo - livre.base, 60)
+  // pixels por unidade do mapa: o maior zoom em que a área ainda cabe no espaço livre...
+  let escala = Math.min(larguraLivre / (area.x1 - area.x0), alturaLivre / (area.y1 - area.y0))
+  // ...mas sem mostrar menos mapa do que a tela precisa para ficar preenchida
+  escala = Math.max(escala, tela.largura / LARGURA, tela.altura / ALTURA)
+  const largura = tela.largura / escala
+  const altura = tela.altura / escala
+  // o centro da área vai para o centro do espaço livre
+  const centroLivreX = livre.esquerda + larguraLivre / 2
+  const centroLivreY = livre.topo + alturaLivre / 2
+  const cx = (area.x0 + area.x1) / 2 - (centroLivreX - tela.largura / 2) / escala
+  const cy = (area.y0 + area.y1) / 2 - (centroLivreY - tela.altura / 2) / escala
   const limitar = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
   return {
-    cx: limitar((area.x0 + area.x1) / 2, largura / 2, LARGURA - largura / 2),
-    cy: limitar((area.y0 + area.y1) / 2, altura / 2, ALTURA - altura / 2),
+    cx: limitar(cx, largura / 2, LARGURA - largura / 2),
+    cy: limitar(cy, altura / 2, ALTURA - altura / 2),
     largura,
     altura,
   }
@@ -103,15 +100,15 @@ function naTela(p: Ponto, camera: Camera, tela: Tela) {
   }
 }
 
-// Acompanha o tamanho de um elemento na tela
-function useTamanho(ref: RefObject<HTMLElement | null>): Tela {
-  const [tela, setTela] = useState<Tela>({ largura: window.innerWidth, altura: window.innerHeight })
+// Acompanha o tamanho de um elemento na tela (incluindo o espaçamento interno)
+function useTamanho(ref: RefObject<HTMLElement | null>, inicial: Tela): Tela {
+  const [tela, setTela] = useState<Tela>(inicial)
   useEffect(() => {
     const elemento = ref.current
     if (!elemento) return
-    const observar = new ResizeObserver(([entrada]) => {
-      const { width, height } = entrada.contentRect
-      if (width > 0 && height > 0) setTela({ largura: width, altura: height })
+    const observar = new ResizeObserver(() => {
+      const { width, height } = elemento.getBoundingClientRect()
+      if (width > 0) setTela({ largura: width, altura: height })
     })
     observar.observe(elemento)
     return () => observar.disconnect()
@@ -130,11 +127,12 @@ function Aviao() {
   )
 }
 
-type PropsMarcador = { ponto: Ponto; nome: string; detalhe?: string; camera: Camera; tela: Tela }
+type PropsMarcador = { ponto: Ponto; nome: string; detalhe?: string; camera: Camera; tela: Tela; comAviao: boolean }
 
-function Marcador({ ponto, nome, detalhe, camera, tela }: PropsMarcador) {
+// comAviao: o avião está parado neste marcador; o nome se afasta para não ficar embaixo da asa
+function Marcador({ ponto, nome, detalhe, camera, tela, comAviao }: PropsMarcador) {
   return (
-    <div className="mapa-marcador" style={naTela(ponto, camera, tela)}>
+    <div className={comAviao ? 'mapa-marcador com-aviao' : 'mapa-marcador'} style={naTela(ponto, camera, tela)}>
       <span className="mapa-marcador-ponto" />
       <span className="mapa-marcador-nome">
         {nome}
@@ -144,14 +142,37 @@ function Marcador({ ponto, nome, detalhe, camera, tela }: PropsMarcador) {
   )
 }
 
-function MapaVoo({ progresso }: { progresso: number }) {
+// Folgas em pixels em volta da rota: laterais, espaço para o nome "Lisboa"
+// (à direita do ponto mais a leste da rota) e para "São Paulo / Viracopos"
+// (abaixo do ponto mais ao sul).
+const FOLGA_LATERAL = 28
+const FOLGA_NOME_LISBOA = 110
+const FOLGA_NOME_CAMPINAS = 40
+const FOLGA_TEXTO = 20
+
+type PropsMapa = { estado: EstadoVoo; topo: number; base: number }
+
+function MapaVoo({ estado, topo, base }: PropsMapa) {
   const palco = useRef<HTMLDivElement>(null)
-  const tela = useTamanho(palco)
+  const tela = useTamanho(palco, { largura: window.innerWidth, altura: window.innerHeight })
+  const { progresso } = estado
   const aviao = posicaoNaRota(progresso)
 
-  // Por enquanto a câmera fica parada mostrando a rota inteira.
-  // Na parte 3c ela passa a ser controlada pela rolagem.
-  const camera = enquadrar(CAIXA_ROTA, tela)
+  // Por enquanto a câmera fica parada mostrando a rota inteira, entre as
+  // faixas de texto. Na parte 3c ela passa a ser controlada pela rolagem.
+  const camera = enquadrar(CAIXA_ROTA, tela, {
+    topo: topo + FOLGA_TEXTO,
+    base: base + FOLGA_TEXTO + FOLGA_NOME_CAMPINAS,
+    esquerda: FOLGA_LATERAL,
+    direita: FOLGA_LATERAL + FOLGA_NOME_LISBOA,
+  })
+
+  const descricao =
+    estado.fase === 'antes'
+      ? 'Mapa da rota de Lisboa a São Paulo. O avião aguarda em Lisboa.'
+      : estado.fase === 'durante'
+        ? `Mapa da rota de Lisboa a São Paulo. Pela estimativa dos horários, o avião está a ${Math.round(progresso * 100)}% do caminho.`
+        : 'Mapa da rota de Lisboa a São Paulo. O avião está em São Paulo.'
   const viewBox = [
     camera.cx - camera.largura / 2,
     camera.cy - camera.altura / 2,
@@ -160,7 +181,7 @@ function MapaVoo({ progresso }: { progresso: number }) {
   ].join(' ')
 
   return (
-    <div className="mapa-palco" ref={palco}>
+    <div className="mapa-palco" ref={palco} role="img" aria-label={descricao}>
       <svg
         className="mapa-desenho"
         viewBox={viewBox}
@@ -192,8 +213,15 @@ function MapaVoo({ progresso }: { progresso: number }) {
         <path className="mapa-rota mapa-rota-feita" d={tracadoPercorrido(progresso)} />
       </svg>
 
-      <Marcador ponto={LISBOA} nome="Lisboa" camera={camera} tela={tela} />
-      <Marcador ponto={VIRACOPOS} nome="Campinas" detalhe="Viracopos" camera={camera} tela={tela} />
+      <Marcador ponto={LISBOA} nome="Lisboa" camera={camera} tela={tela} comAviao={estado.fase === 'antes'} />
+      <Marcador
+        ponto={VIRACOPOS}
+        nome="São Paulo"
+        detalhe="Viracopos"
+        camera={camera}
+        tela={tela}
+        comAviao={estado.fase === 'depois'}
+      />
 
       <div
         className="mapa-aviao"
@@ -205,55 +233,75 @@ function MapaVoo({ progresso }: { progresso: number }) {
   )
 }
 
-function Voo({ onVoltar }: { onVoltar: () => void }) {
-  const [agora, setAgora] = useState(Date.now())
-
+// Recalcula o horário ao abrir, ao voltar para o app (depois de ficar em
+// segundo plano) e a cada 15 segundos. Não depende do app ficar aberto:
+// a posição sai sempre da conta com o relógio.
+function useRelogio(): number {
+  const [instante, setInstante] = useState(agora)
   useEffect(() => {
-    const relogio = setInterval(() => setAgora(Date.now()), 1000)
-    return () => clearInterval(relogio)
+    const atualizar = () => setInstante(agora())
+    const aoVoltar = () => {
+      if (!document.hidden) atualizar()
+    }
+    const relogio = setInterval(atualizar, 15000)
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('pageshow', atualizar)
+    window.addEventListener('focus', atualizar)
+    return () => {
+      clearInterval(relogio)
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('pageshow', atualizar)
+      window.removeEventListener('focus', atualizar)
+    }
   }, [])
+  return instante
+}
 
-  const total = POUSO - DECOLAGEM
-  const progressoReal = Math.min(Math.max((agora - DECOLAGEM) / total, 0), 1)
-  const progresso = MODO_TESTE ? PROGRESSO_TESTE : progressoReal
+// Textos de cada estado do voo
+function textos(estado: EstadoVoo) {
+  if (estado.fase === 'antes') {
+    return { rotulo: 'Lisboa → São Paulo', principal: `Decolagem em ${formatarDuracao(estado.falta)}`, legenda: null }
+  }
+  if (estado.fase === 'durante') {
+    return {
+      rotulo: 'Em voo',
+      principal: `Pouso previsto em ${formatarDuracao(estado.falta)}`,
+      legenda: 'A cada minuto, mais perto de você.',
+    }
+  }
+  return {
+    rotulo: 'São Paulo',
+    principal: 'A distância chegou ao fim.',
+    legenda: 'Agora, o oceano já não está entre nós.',
+  }
+}
 
-  const falta = Math.max(POUSO - agora, 0)
-  const horas = Math.floor(falta / 3600000)
-  const minutos = Math.floor((falta % 3600000) / 60000)
+function Voo() {
+  const instante = useRelogio()
+  const estado = estadoDoVoo(instante)
+  const { rotulo, principal, legenda } = textos(estado)
 
-  const chegou = agora >= POUSO
-
-  const TOTAL_BLOCOS = 20
-  const blocosAcesos = Math.round(progresso * TOTAL_BLOCOS)
+  // Altura das faixas de texto: a câmera deixa a rota e os marcadores fora delas
+  const refTopo = useRef<HTMLElement>(null)
+  const refBase = useRef<HTMLElement>(null)
+  const topo = useTamanho(refTopo, { largura: 0, altura: 140 }).altura
+  const base = useTamanho(refBase, { largura: 0, altura: 80 }).altura
 
   return (
-    <div className="voo">
-      <div className="voo-coracao">— ♥ —</div>
-      <h1 className="voo-titulo">HANDSHAKE</h1>
+    <section className="voo" aria-label="A viagem">
+      <MapaVoo estado={estado} topo={topo} base={base} />
 
-      <p className="voo-frase">
-        {chegou
-          ? 'Agora, o oceano já não está entre nós.'
-          : 'Princesa, eu prometi que chegaria até você...'}
-      </p>
+      <header className="voo-topo" ref={refTopo}>
+        <p className="voo-rotulo">{rotulo}</p>
+        <p className="voo-principal">{principal}</p>
+        {legenda && <p className="voo-legenda">{legenda}</p>}
+      </header>
 
-      <MapaVoo progresso={progresso} />
-
-      <p className="voo-legenda">A cada minuto, mais perto de você.</p>
-
-      <div className="voo-contagem">
-        <span>✈ Tempo para o nosso encontro</span>
-        <strong>{horas}h {minutos}min</strong>
-      </div>
-
-      <div className="voo-barra">
-        {Array.from({ length: TOTAL_BLOCOS }, (_, i) => (
-          <div key={i} className={i < blocosAcesos ? 'voo-bloco aceso' : 'voo-bloco'} />
-        ))}
-      </div>
-
-        <button className="voo-voltar" onClick={onVoltar}>Nossa história &gt;</button>
-    </div>
+      <footer className="voo-base" ref={refBase}>
+        <p className="voo-horarios">Partida 27/11 às 09:00 em Lisboa · Chegada às 16:20 em São Paulo</p>
+        <p className="voo-aviso">Trajeto estimado pelos horários previstos. Não é rastreamento em tempo real.</p>
+      </footer>
+    </section>
   )
 }
 

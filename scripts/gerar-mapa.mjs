@@ -22,8 +22,8 @@ const VIRACOPOS = [-47.1345, -23.0074] // Aeroporto de Viracopos, Campinas
 
 // Recorte bem maior que a rota: assim sobra mapa para preencher qualquer tela
 // (iPhone em pé, computador largo, monitor ultralargo) sem faixas vazias.
-const OESTE = -110, LESTE = 55, SUL = -50, NORTE = 62
-const LARGURA = 1400
+const OESTE = -135, LESTE = 75, SUL = -50, NORTE = 62
+const LARGURA = 1780
 
 const projecao = geoMercator().fitWidth(LARGURA, {
   type: 'MultiPoint',
