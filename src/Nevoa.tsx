@@ -113,21 +113,38 @@ type Props = {
 }
 
 function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1, aparencia = 'nevoa' }: Props) {
+  const sistemaRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const calmo = useReducedMotion()
   const [usarWebGL, setUsarWebGL] = useState(true)
+  // a cena está perto da tela? (até uma tela de distância, para cima ou para baixo)
+  const [perto, setPerto] = useState(false)
+
+  // A névoa da placa de vídeo só existe quando a cena está perto da tela:
+  // é criada pouco antes de aparecer e apagada (liberando a memória) quando a
+  // cena fica longe. No celular, isso evita várias névoas carregadas ao mesmo tempo.
+  useEffect(() => {
+    const sistema = sistemaRef.current
+    if (!sistema) return
+    const observador = new IntersectionObserver(([entrada]) => setPerto(entrada.isIntersecting), {
+      rootMargin: '100% 0px',
+    })
+    observador.observe(sistema)
+    return () => observador.disconnect()
+  }, [])
 
   // Liga a névoa na placa de vídeo. Se "Reduzir movimento" mudar, recomeça.
+  // Quando a cena se afasta, o canvas sai da página e a névoa é desligada.
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!usarWebGL || !canvas) return
+    if (!usarWebGL || !perto || !canvas) return
     const controle = iniciarNevoaWebGL(
       canvas,
       { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade, aparencia: APARENCIAS[aparencia] },
       () => setUsarWebGL(false),
     )
     return () => controle?.parar()
-  }, [usarWebGL, calmo, centroX, centroY, sensibilidade, aparencia])
+  }, [usarWebGL, perto, calmo, centroX, centroY, sensibilidade, aparencia])
 
   // As imagens do plano B só são geradas se ele for usado.
   // (sem WebGL, o vapor usa a névoa simples do site)
@@ -135,12 +152,12 @@ function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibili
   const imagem = (url: string): CSSProperties => ({ backgroundImage: `url(${url})` })
 
   return (
-    <motion.div className={`nevoa-sistema ${className}`} style={style} aria-hidden="true">
+    <motion.div ref={sistemaRef} className={`nevoa-sistema ${className}`} style={style} aria-hidden="true">
       {/* luz ambiente e a fonte forte bem atrás da obsidiana */}
       <div className="nevoa-luz" />
       <div className="nevoa-fonte" />
 
-      {usarWebGL && <canvas ref={canvasRef} className="nevoa-canvas" />}
+      {usarWebGL && perto && <canvas ref={canvasRef} className="nevoa-canvas" />}
 
       {/* plano B: camadas de fumaça deslizando */}
       {fumaca && (

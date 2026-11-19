@@ -102,7 +102,7 @@ void main() {
   // Onde a névoa aparece: densa nas bordas e embaixo, rala em volta da obsidiana
   float distancia = length(p - centro);
   float longe = smoothstep(0.22, 0.7, distancia);
-  float baixo = smoothstep(0.6, 0.0, uv.y);
+  float baixo = 1.0 - smoothstep(0.0, 0.6, uv.y);
   float borda = smoothstep(0.28, 0.5, max(abs(uv.x - 0.5), abs(uv.y - 0.5)));
   float mascara = clamp(0.35 + baixo * 0.75 + borda * 0.5, 0.0, 1.0) * mix(0.03, 1.0, longe);
   mascara = mix(mascara, 1.0, u_cheio);
@@ -132,7 +132,7 @@ void main() {
     vec2 lugar = vec2(sorteio(celula + 7.1), sorteio(celula + 3.7)) * 0.6 + 0.2;
     float pisca = 0.5 + 0.5 * sin(t * 2.0 + h * 60.0);
     float naFumaca = 0.06 + 0.94 * smoothstep(0.04, 0.3, densidade);
-    brilho = smoothstep(0.13, 0.0, length(fract(g) - lugar)) * pisca * naFumaca * u_brilhos;
+    brilho = (1.0 - smoothstep(0.0, 0.13, length(fract(g) - lugar))) * pisca * naFumaca * u_brilhos;
   }
 
   // cor "pré-multiplicada" pela transparência (o canvas é transparente)
@@ -148,6 +148,16 @@ type Opcoes = {
 }
 
 export type ControleNevoa = { parar: () => void }
+
+// Pausa geral de todas as névoas (por exemplo, enquanto uma foto está ampliada):
+// cada névoa congela no último quadro e volta a andar quando a pausa acaba.
+let pausaGeral = false
+const ouvintesDaPausa = new Set<() => void>()
+export function pausarNevoas(pausar: boolean) {
+  if (pausaGeral === pausar) return
+  pausaGeral = pausar
+  ouvintesDaPausa.forEach((avisar) => avisar())
+}
 
 // Aparência: as cores (escura, média, clara), para onde a fumaça anda,
 // se é névoa em fiapos (cheio 0) ou um líquido cheio (cheio 1), e as partículas.
@@ -296,9 +306,10 @@ export function iniciarNevoaWebGL(
     desenhar()
   }
 
-  // Liga ou pausa conforme a névoa está na tela e o app está aberto
+  // Liga ou pausa conforme a névoa está na tela, o app está aberto e não há
+  // pausa geral
   function atualizar() {
-    const deveRodar = naTela && !document.hidden
+    const deveRodar = naTela && !document.hidden && !pausaGeral
     if (deveRodar && !rodando) {
       rodando = true
       ultimoQuadro = performance.now()
@@ -365,6 +376,7 @@ export function iniciarNevoaWebGL(
     window.addEventListener('pointermove', aoMover, { passive: true })
     window.addEventListener('pointerdown', aoTocar, { passive: true })
     document.addEventListener('visibilitychange', atualizar)
+    ouvintesDaPausa.add(atualizar)
     observarTela = new IntersectionObserver(([entrada]) => {
       naTela = entrada.isIntersecting
       atualizar()
@@ -381,6 +393,9 @@ export function iniciarNevoaWebGL(
     window.removeEventListener('pointermove', aoMover)
     window.removeEventListener('pointerdown', aoTocar)
     document.removeEventListener('visibilitychange', atualizar)
+    ouvintesDaPausa.delete(atualizar)
+    // o aviso de "perdeu a placa de vídeo" sai antes de liberar a memória
+    // abaixo: liberar de propósito não deve trocar para a névoa simples
     canvas.removeEventListener('webglcontextlost', aoPerderContexto)
     observarTamanho.disconnect()
     observarTela?.disconnect()
@@ -389,6 +404,8 @@ export function iniciarNevoaWebGL(
       gl.deleteProgram(programa)
       gl.deleteShader(vertices)
       gl.deleteShader(fumaca)
+      // devolve a memória da placa de vídeo na hora (sem esperar o navegador)
+      if (!gl.isContextLost()) gl.getExtension('WEBGL_lose_context')?.loseContext()
     }
   }
 

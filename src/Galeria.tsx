@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
-import { AnimatePresence, LayoutGroup, motion, MotionConfig, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'motion/react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
+import { AnimatePresence, LayoutGroup, motion, MotionConfig, useIsPresent, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import type { ReactNode } from 'react'
 import Montanha from './Montanha'
+import { pausarNevoas } from './NevoaShader'
 import './Galeria.css'
 
 // As quatro frases marcadas com "provisória" serão trocadas pelas suas.
@@ -149,12 +150,32 @@ function Ampliada({ indice, giroOrigem, comNavegacao, aoFechar, aoNavegar }: Pro
   const foto = FOTOS[indice]
   const fechar = useRef<HTMLButtonElement>(null)
   const fundo = useRef<HTMLDivElement>(null)
+  const dialogo = useRef<HTMLDialogElement>(null)
+  // false enquanto a foto está voltando para o lugar (animação de saída)
+  const presente = useIsPresent()
 
-  // Teclado: Esc fecha, setas passam de foto
+  // Diálogo de verdade: aberto "modal", a página por trás fica inativa (sem
+  // clique, sem Tab, ignorada pelo leitor de tela) e o foco fica preso aqui.
+  // Ao começar a fechar, o diálogo já solta a página, para o foco poder
+  // voltar para a foto enquanto ela ainda faz o caminho de volta.
+  useLayoutEffect(() => {
+    const d = dialogo.current
+    if (!d) return
+    if (presente && !d.open) d.showModal()
+    if (!presente && d.open) d.close()
+  }, [presente])
+  useEffect(() => {
+    const d = dialogo.current
+    return () => d?.close()
+  }, [])
+
+  // Teclado: Esc fecha (com a animação da foto voltando), setas passam de foto
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') aoFechar()
-      else if (comNavegacao && e.key === 'ArrowRight') aoNavegar(1)
+      if (e.key === 'Escape') {
+        e.preventDefault() // o próprio diálogo não fecha sozinho, sem animação
+        aoFechar()
+      } else if (comNavegacao && e.key === 'ArrowRight') aoNavegar(1)
       else if (comNavegacao && e.key === 'ArrowLeft') aoNavegar(-1)
     }
     window.addEventListener('keydown', aoTeclar)
@@ -176,7 +197,15 @@ function Ampliada({ indice, giroOrigem, comNavegacao, aoFechar, aoNavegar }: Pro
   }, [])
 
   return (
-    <div className="ampliada" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+    <dialog
+      ref={dialogo}
+      className="ampliada"
+      aria-label="Foto ampliada"
+      onCancel={(e) => {
+        e.preventDefault()
+        aoFechar()
+      }}
+    >
       <motion.div
         ref={fundo}
         className="ampliada-fundo"
@@ -235,7 +264,7 @@ function Ampliada({ indice, giroOrigem, comNavegacao, aoFechar, aoNavegar }: Pro
           </div>
         )}
       </motion.div>
-    </div>
+    </dialog>
   )
 }
 
@@ -351,6 +380,14 @@ function Galeria() {
       document.body.style.overflow = ''
     }
   }, [aberta])
+
+  // Com uma foto ampliada, as névoas do site pausam (congelam no último quadro)
+  const algumaAberta = aberta !== null
+  useEffect(() => {
+    if (!algumaAberta) return
+    pausarNevoas(true)
+    return () => pausarNevoas(false)
+  }, [algumaAberta])
 
   // Ao fechar, o foco volta para a foto de onde saiu
   useEffect(() => {
