@@ -96,10 +96,11 @@ function Abertura() {
   // enquanto a pessoa rola. Cada efeito abaixo usa um trecho desse caminho.
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
 
-  // A câmera se aproxima da obsidiana e ela se dissolve na névoa...
+  // A câmera se aproxima da obsidiana e ela se dissolve na névoa (some
+  // antes de a frase surgir, para a frase nunca ficar sobre o cubo)...
   const escala = useTransform(scrollYProgress, [0, 0.55], [1, 1.5])
   const subir = useTransform(scrollYProgress, [0, 0.55], [0, -30])
-  const obsidianaOpacidade = useTransform(scrollYProgress, [0.2, 0.55], [1, 0])
+  const obsidianaOpacidade = useTransform(scrollYProgress, [0.12, 0.36], [1, 0])
   // ...a dica some logo no começo da rolagem...
   const dicaOpacidade = useTransform(scrollYProgress, [0, 0.1], [1, 0])
   // ...a névoa fica mais densa no meio da passagem...
@@ -113,7 +114,7 @@ function Abertura() {
     <section ref={ref} className="abertura-nova">
       <div className="abertura-palco">
         <div className="abertura-fundo">
-          <Nevoa style={{ opacity: nevoaOpacidade }} />
+          <Nevoa style={{ opacity: nevoaOpacidade }} intensidade={0.7} />
         </div>
 
         <motion.div

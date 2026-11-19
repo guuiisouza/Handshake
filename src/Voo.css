@@ -288,6 +288,17 @@
   left: 22px;
 }
 
+/* perto da borda direita, o nome passa para a esquerda do ponto */
+.mapa-marcador.nome-esquerda .mapa-marcador-nome {
+  left: auto;
+  right: 12px;
+  text-align: right;
+}
+
+.mapa-marcador.nome-esquerda.com-aviao .mapa-marcador-nome {
+  right: 22px;
+}
+
 /* Avião branco, com um brilho suave por trás */
 .mapa-aviao {
   position: absolute;

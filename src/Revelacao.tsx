@@ -1,16 +1,16 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { animate, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from 'motion/react'
 import Nevoa from './Nevoa'
 import Obsidiana from './Obsidiana'
 import { faixa } from './vooCamera'
 import './Revelacao.css'
 
-// Revelação final, em duas cenas guiadas pela rolagem (a tela fica grudada
-// enquanto a pessoa rola, como na abertura e no mapa):
+// Revelação final, em duas cenas de mais ou menos uma tela cada. As duas
+// tocam sozinhas, uma vez, quando aparecem (não dependem da rolagem):
 // 1. HANDSHAKE: dois computadorzinhos trocam os pacotes SYN, SYN-ACK e ACK
-//    de uma conexão TCP; quando o ACK chega, a conexão se acende. Essa troca
-//    não depende da rolagem: toca sozinha, uma vez, quando a cena aparece.
-// 2. Obsidiana: a água encontra a lava, sobe vapor e nasce o mesmo bloco da abertura.
+//    de uma conexão TCP; quando o ACK chega, a conexão se acende.
+// 2. Obsidiana: uma luz de água e uma de lava se encontram, viram a névoa
+//    violeta do site e dela nasce o mesmo bloco da abertura.
 // Com "Reduzir movimento", nada viaja nem cresce: tudo aparece no lugar.
 
 // Textos do documento mestre (sem mudanças)
@@ -18,34 +18,40 @@ const TEXTO_HANDSHAKE =
   'Na tecnologia, um handshake é o primeiro passo para estabelecer uma conexão. E foi assim com a gente: antes do primeiro abraço, mesmo longe, já tínhamos encontrado uma maneira de nos conectar.'
 const TEXTO_OBSIDIANA =
   'No Minecraft, quando a água encontra uma fonte de lava, nasce a obsidiana. Eu escolhi esse bloco porque me lembra a gente: duas histórias diferentes que se encontraram e criaram algo forte, capaz de abrir caminhos para um mundo novo.'
+// Frases curtas em destaque, acima de cada explicação
+const FRASE_HANDSHAKE = 'A conexão veio antes do abraço.'
+const FRASE_OBSIDIANA = 'Duas histórias, um mundo novo.'
+
+// Curva suave (começa e termina devagar), como um movimento de câmera
+const suave = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+// trecho(v, de, ate): 0 antes de "de", 1 depois de "ate", com a curva suave no meio
+const trecho = (v: number, de: number, ate: number) => suave(faixa(v, de, ate))
 
 // ---------- Cena 1: handshake TCP ----------
 
 // A troca de pacotes toca sozinha, uma vez, em DURACAO segundos.
 // Os números abaixo dizem em que trecho dessa animação (0 = começo, 1 = fim)
 // cada coisa acontece.
-const DURACAO = 4.6
+const DURACAO = 5.8
 type Pacote = { rotulo: string; doPrimeiro: boolean; de: number; ate: number }
 const PACOTES: Pacote[] = [
-  { rotulo: 'SYN', doPrimeiro: true, de: 0.04, ate: 0.26 },
-  { rotulo: 'SYN-ACK', doPrimeiro: false, de: 0.33, ate: 0.55 },
-  { rotulo: 'ACK', doPrimeiro: true, de: 0.62, ate: 0.84 },
+  { rotulo: 'SYN', doPrimeiro: true, de: 0.03, ate: 0.21 },
+  { rotulo: 'SYN-ACK', doPrimeiro: false, de: 0.26, ate: 0.44 },
+  { rotulo: 'ACK', doPrimeiro: true, de: 0.49, ate: 0.67 },
 ]
-const CONEXAO = { de: 0.84, ate: 0.96 } // a linha se acende quando o ACK chega
+const CONEXAO = { de: 0.67, ate: 0.76 } // a linha se acende quando o ACK chega
 
 // Legenda de cada passo (e o trecho da animação em que aparece)
 const PASSOS = [
-  { texto: 'SYN — o primeiro computador pede para começar uma conexão', de: 0, ate: 0.29 },
-  { texto: 'SYN-ACK — o segundo recebe o pedido e responde que aceita', de: 0.29, ate: 0.58 },
-  { texto: 'ACK — o primeiro confirma, e os dois estão prontos', de: 0.58, ate: 0.87 },
-  { texto: 'Conexão estabelecida', de: 0.87, ate: 2 },
+  { texto: 'SYN — o primeiro computador pede para começar uma conexão', de: 0, ate: 0.23 },
+  { texto: 'SYN-ACK — o segundo recebe o pedido e responde que aceita', de: 0.23, ate: 0.46 },
+  { texto: 'ACK — o primeiro confirma, e os dois estão prontos', de: 0.46, ate: 0.69 },
+  { texto: 'Conexão estabelecida', de: 0.69, ate: 2 },
 ]
 
-// A frase surge suavemente quando o ACK chega e a conexão se acende
-const TEXTO = { de: 0.86, ate: 1 }
-
-// O escurecimento do fim continua preso à rolagem (trecho da rolagem da cena, 0 a 1)
-const SAIDA = { de: 0.93, ate: 1 } // tudo escurece, levando à cena da obsidiana
+// Depois da conexão: a frase em destaque e, logo abaixo, a explicação
+const FRASE = { de: 0.7, ate: 0.84 }
+const TEXTO = { de: 0.8, ate: 0.96 }
 
 // Computador retrô em pixel art (30 x 22), desenhado por código, visto de três
 // quartos: monitor de tubo (CRT) com a tela acesa, teclado na frente e
@@ -223,10 +229,8 @@ function useTocarUmaVez(palco: RefObject<HTMLDivElement | null>, calmo: boolean,
 }
 
 function CenaHandshake() {
-  const ref = useRef<HTMLElement>(null)
   const palco = useRef<HTMLDivElement>(null)
   const calmo = Boolean(useReducedMotion())
-  const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   // a troca de pacotes anda no próprio ritmo (0 a 1), sem depender da rolagem
   const a = useTocarUmaVez(palco, calmo, DURACAO)
 
@@ -234,22 +238,22 @@ function CenaHandshake() {
   const conexao = useTransform(a, (v) => (calmo ? 1 : faixa(v, CONEXAO.de, CONEXAO.ate)))
   const telas = useTransform(conexao, [0, 1], [0.35, 1])
   const telasAcesas = useTransform(conexao, [0, 1], [0, 0.22])
-  const saida = useTransform(p, (v) => 1 - faixa(v, SAIDA.de, SAIDA.ate))
-  // a névoa aparece com a conexão e se apaga junto com o resto no fim da cena
-  // (assim a troca para a cena da obsidiana acontece no escuro, sem linha)
-  const nevoa = useTransform([conexao, saida], ([c, s]: number[]) => c * 0.7 * s)
-  const texto = useTransform(a, (v) => (calmo ? 1 : faixa(v, TEXTO.de, TEXTO.ate)))
-  const textoY = useTransform(texto, [0, 1], [16, 0])
+  // a névoa aparece com a conexão
+  const nevoa = useTransform(conexao, (c) => c * 0.7)
+  const frase = useTransform(a, (v) => (calmo ? 1 : trecho(v, FRASE.de, FRASE.ate)))
+  const fraseY = useTransform(frase, [0, 1], [12, 0])
+  const texto = useTransform(a, (v) => (calmo ? 1 : trecho(v, TEXTO.de, TEXTO.ate)))
+  const textoY = useTransform(texto, [0, 1], [12, 0])
 
   return (
-    <section ref={ref} className="rev rev-handshake" aria-label="Handshake">
+    <section className="rev rev-handshake" aria-label="Handshake">
       <div ref={palco} className="rev-palco">
         {/* a névoa aparece ao redor quando a conexão se acende */}
         <motion.div className="rev-nevoa" style={{ opacity: nevoa }}>
-          <Nevoa />
+          <Nevoa intensidade={0.7} />
         </motion.div>
 
-        <motion.div className="rev-conteudo" style={{ opacity: saida }}>
+        <div className="rev-conteudo">
           <header className="rev-cabecalho">
             <h2 className="rev-titulo">HANDSHAKE</h2>
             <p className="rev-subtitulo">Como começa uma conexão TCP</p>
@@ -278,89 +282,92 @@ function CenaHandshake() {
             </div>
           )}
 
-          <motion.p className="rev-texto" style={{ opacity: texto, y: calmo ? 0 : textoY }}>
-            {TEXTO_HANDSHAKE}
-          </motion.p>
-        </motion.div>
+          <div className="rev-textos">
+            <motion.p className="rev-destaque" style={{ opacity: frase, y: calmo ? 0 : fraseY }}>
+              {FRASE_HANDSHAKE}
+            </motion.p>
+            <motion.p className="rev-texto rev-texto-menor" style={{ opacity: texto, y: calmo ? 0 : textoY }}>
+              {TEXTO_HANDSHAKE}
+            </motion.p>
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
-// ---------- Cena 2: a água encontra a lava = obsidiana ----------
-// Simples e leve: lava incandescente de um lado, água do outro. Elas se
-// aproximam com a rolagem e, onde se tocam, sobe vapor que vira a névoa
-// violeta do site; dela nasce a obsidiana da abertura.
-// Lava e água são só degradês (quase não pesam); a única coisa desenhada pela
-// placa de vídeo é o vapor.
-// Como a troca de pacotes, isso não depende da rolagem: toca sozinho, uma vez,
-// quando a cena aparece. Só o texto continua aparecendo pela rolagem.
+// ---------- Cena 2: duas luzes = obsidiana ----------
+// Abstrata e calma: uma luz azul-esverdeada (a água) e uma luz laranja (a
+// lava) entram de lados opostos e se aproximam devagar. Ao se encontrarem, se
+// fundem na névoa violeta do site; dela surge a obsidiana da abertura e, com
+// ela se estabilizando, a frase e a explicação.
+// As luzes já aparecem fracas nas bordas antes de a cena começar: na troca
+// com o handshake a tela nunca fica preta.
+// Não depende da rolagem: toca sozinha, uma vez, quando a cena aparece.
 const DURACAO_OBSIDIANA = 8 // segundos
 
 function CenaObsidiana() {
-  const ref = useRef<HTMLElement>(null)
-  const calmo = Boolean(useReducedMotion())
   const palco = useRef<HTMLDivElement>(null)
-  const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
+  const calmo = Boolean(useReducedMotion())
   // a animação anda no próprio ritmo (0 = começo, 1 = obsidiana pronta)
   const a = useTocarUmaVez(palco, calmo, DURACAO_OBSIDIANA)
 
-  // lava e água deslizam das bordas até se encontrarem no meio
-  const chegada = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.03, 0.34)))
-  const lavaX = useTransform(chegada, [0, 1], ['-60%', '0%'])
-  const aguaX = useTransform(chegada, [0, 1], ['60%', '0%'])
-  // depois que a obsidiana nasce, as duas se apagam devagar
-  const liquidos = useTransform(a, (v) => (calmo ? 0.35 : 1 - 0.65 * faixa(v, 0.71, 0.94)))
-  // brilho quente no ponto onde se tocam
-  const toque = useTransform(a, (v) => (calmo ? 0.4 : faixa(v, 0.28, 0.4) * (1 - 0.6 * faixa(v, 0.71, 0.94))))
-  // o vapor sobe do ponto de contato e depois se abre pela tela
-  const vapor = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.34, 0.51)))
-  const vaporAltura = useTransform(a, (v) => (calmo ? 1 : 0.15 + 0.85 * faixa(v, 0.34, 0.71)))
-  const abertura = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.51, 0.86)))
-  const vaporLargura = useTransform(abertura, [0, 1], [0.3, 1.1])
-  // a obsidiana surge de dentro da névoa, ainda quente, e esfria
-  const bloco = useTransform(a, (v) => (calmo ? 1 : faixa(v, 0.71, 0.89)))
-  const blocoEscala = useTransform(bloco, [0, 1], [0.85, 1])
-  const calor = useTransform(a, (v) => (calmo ? 0 : faixa(v, 0.71, 0.8) * (1 - faixa(v, 0.83, 1))))
-  const texto = useTransform(p, (v) => (calmo ? 1 : faixa(v, 0.66, 0.76)))
-  const textoY = useTransform(texto, [0, 1], [16, 0])
+  // as luzes se aproximam devagar, das bordas até o centro
+  const aproximacao = useTransform(a, (v) => trecho(v, 0, 0.58))
+  const aguaX = useTransform(aproximacao, (t) => `${-40 * (1 - t)}vw`)
+  const lavaX = useTransform(aproximacao, (t) => `${40 * (1 - t)}vw`)
+  // ficam um pouco mais fortes ao se aproximar e se dissolvem ao se encontrar
+  const luzes = useTransform(a, (v) => (calmo ? 0 : (0.55 + 0.3 * trecho(v, 0, 0.4)) * (1 - trecho(v, 0.42, 0.72))))
+  // enquanto se aproximam, as duas cores vão ganhando o violeta do site:
+  // o encontro já nasce violeta (sem misturar em cinza)
+  const tomVioleta = useTransform(a, (v) => trecho(v, 0.18, 0.5))
+  const tomProprio = useTransform(tomVioleta, (t) => 1 - t)
+  const luzesEscala = useTransform(a, (v) => 1 - 0.25 * trecho(v, 0.38, 0.7))
+  // no encontro nasce a luz violeta, e com ela a névoa do site
+  const violeta = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.36, 0.68)))
+  const violetaEscala = useTransform(violeta, [0, 1], [0.6, 1])
+  const nevoa = useTransform(a, (v) => (calmo ? 0.9 : 0.9 * trecho(v, 0.42, 0.8)))
+  // a obsidiana surge da névoa e se estabiliza
+  const bloco = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.55, 0.82)))
+  const blocoEscala = useTransform(bloco, [0, 1], [0.92, 1])
+  const blocoY = useTransform(bloco, [0, 1], [14, 0])
+  // a frase e a explicação aparecem enquanto ela se estabiliza
+  const frase = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.7, 0.88)))
+  const fraseY = useTransform(frase, [0, 1], [12, 0])
+  const texto = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.78, 0.96)))
+  const textoY = useTransform(texto, [0, 1], [12, 0])
 
   return (
-    <section ref={ref} className="rev rev-obsidiana" aria-label="Obsidiana">
+    <section className="rev rev-obsidiana" aria-label="Obsidiana">
       <div ref={palco} className="rev-palco">
-        <motion.div className="lv-liquidos" style={{ opacity: liquidos }} aria-hidden="true">
-          <motion.div className={calmo ? 'lv-lava parado' : 'lv-lava'} style={{ x: lavaX }} />
-          <motion.div className={calmo ? 'lv-agua parado' : 'lv-agua'} style={{ x: aguaX }} />
-          <motion.div className="lv-toque" style={{ opacity: toque }} />
-        </motion.div>
-
-        {/* vapor: laranja embaixo, violeta em cima */}
-        <motion.div
-          className="lv-vapor"
-          style={{ opacity: vapor, scaleX: vaporLargura, scaleY: vaporAltura }}
-          aria-hidden="true"
-        >
-          <Nevoa aparencia="vapor" centroX={-4} centroY={0.5} sensibilidade={0.35} />
-        </motion.div>
-
-        {/* a luz violeta do site, atrás de onde a obsidiana vai nascer */}
-        <motion.div className="lv-luz" style={{ opacity: abertura }} aria-hidden="true" />
-
-        {/* em cima e embaixo, preto puro: emenda com as cenas vizinhas sem linha */}
-        <div className="lv-vinheta" aria-hidden="true" />
-
-        <div className="lv-obsidiana">
-          <motion.div style={{ opacity: bloco, scale: calmo ? 1 : blocoEscala }}>
-            <Obsidiana calmo={calmo} />
-            {/* brilho de lava sobre o bloco, que se apaga quando ele se solidifica */}
-            <motion.div className="lv-calor" style={{ opacity: calor }} />
+        <div className="lv-luzes" aria-hidden="true">
+          <motion.div className="lv-luz" style={{ x: aguaX, opacity: luzes, scale: luzesEscala }}>
+            <motion.div className={calmo ? 'lv-luz-cor lv-agua parado' : 'lv-luz-cor lv-agua'} style={{ opacity: tomProprio }} />
+            <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
           </motion.div>
+          <motion.div className="lv-luz" style={{ x: lavaX, opacity: luzes, scale: luzesEscala }}>
+            <motion.div className={calmo ? 'lv-luz-cor lv-lava parado' : 'lv-luz-cor lv-lava'} style={{ opacity: tomProprio }} />
+            <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
+          </motion.div>
+          <motion.div className="lv-violeta" style={{ opacity: violeta, scale: violetaEscala }} />
         </div>
 
-        <div className="lv-texto">
-          <motion.p className="rev-texto" style={{ opacity: texto, y: calmo ? 0 : textoY }}>
-            {TEXTO_OBSIDIANA}
-          </motion.p>
+        <motion.div className="lv-nevoa" style={{ opacity: nevoa }} aria-hidden="true">
+          <Nevoa centroY={0.6} />
+        </motion.div>
+
+        <div className="lv-centro">
+          <motion.div className="lv-bloco" style={{ opacity: bloco, scale: calmo ? 1 : blocoEscala, y: calmo ? 0 : blocoY }}>
+            <Obsidiana calmo={calmo} />
+          </motion.div>
+          <div className="rev-textos">
+            <motion.p className="rev-destaque" style={{ opacity: frase, y: calmo ? 0 : fraseY }}>
+              {FRASE_OBSIDIANA}
+            </motion.p>
+            <motion.p className="rev-texto rev-texto-menor" style={{ opacity: texto, y: calmo ? 0 : textoY }}>
+              {TEXTO_OBSIDIANA}
+            </motion.p>
+          </div>
         </div>
       </div>
     </section>

@@ -43,6 +43,7 @@ uniform vec3 u_cor0b;      // cores de cima (quando a cor muda com a altura)
 uniform vec3 u_cor1b;
 uniform vec3 u_cor2b;
 uniform float u_vertical;  // 1 = as cores vão das de baixo para as de cima
+uniform float u_intensidade; // 1 = normal; 0.7 = névoa e brilhos 30% mais fracos
 
 float sorteio(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -136,7 +137,8 @@ void main() {
   }
 
   // cor "pré-multiplicada" pela transparência (o canvas é transparente)
-  gl_FragColor = vec4(cor * alfa + lilas * brilho * 0.8, clamp(alfa + brilho * 0.8, 0.0, 1.0));
+  // (a intensidade enfraquece a névoa e os brilhos juntos)
+  gl_FragColor = vec4(cor * alfa + lilas * brilho * 0.8, clamp(alfa + brilho * 0.8, 0.0, 1.0)) * u_intensidade;
 }
 `
 
@@ -144,6 +146,7 @@ type Opcoes = {
   estatico: boolean          // true = "Reduzir movimento": um quadro só, parado
   sensibilidade?: number     // quanto rolagem/toque/mouse agitam a fumaça (1 = normal)
   aparencia?: Aparencia      // cores e movimento (padrão: a névoa violeta do site)
+  intensidade?: number       // 1 = normal; menos que 1 deixa a névoa e os brilhos mais fracos
   centro: [number, number]   // posição da obsidiana na tela (0 a 1, de baixo para cima)
 }
 
@@ -171,16 +174,6 @@ export const NEVOA_VIOLETA: Aparencia = {
   cheio: 0,
   brilhos: 1,
 }
-// Vapor do choque: laranja embaixo (perto da lava) e a névoa violeta do site em
-// cima (um pouco mais claro); sobe mais depressa e é mais denso que a névoa comum
-export const VAPOR: Aparencia = {
-  cores: [[0.45, 0.1, 0.03], [1.0, 0.6, 0.22], [1.0, 0.9, 0.7]],
-  coresTopo: [[0.24, 0.09, 0.48], [0.72, 0.4, 1.0], [0.92, 0.84, 1.0]],
-  fluxo: [0, 3],
-  cheio: 0.35,
-  brilhos: 0.6,
-}
-
 function compilar(gl: WebGLRenderingContext, tipo: number, codigo: string) {
   const shader = gl.createShader(tipo)
   if (!shader) return null
@@ -197,7 +190,7 @@ function compilar(gl: WebGLRenderingContext, tipo: number, codigo: string) {
 // (para mostrar a névoa simples) e devolve null.
 export function iniciarNevoaWebGL(
   canvas: HTMLCanvasElement,
-  { estatico, centro, sensibilidade = 1, aparencia = NEVOA_VIOLETA }: Opcoes,
+  { estatico, centro, sensibilidade = 1, aparencia = NEVOA_VIOLETA, intensidade = 1 }: Opcoes,
   aoFalhar: () => void,
 ): ControleNevoa | null {
   const gl = canvas.getContext('webgl', {
@@ -257,6 +250,7 @@ export function iniciarNevoaWebGL(
   cor('u_cor1b', topo[1])
   cor('u_cor2b', topo[2])
   gl.uniform1f(gl.getUniformLocation(programa, 'u_vertical'), aparencia.coresTopo ? 1 : 0)
+  gl.uniform1f(gl.getUniformLocation(programa, 'u_intensidade'), intensidade)
 
   // Estado da animação
   let tempo = 12

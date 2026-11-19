@@ -161,6 +161,28 @@ function opacidade(elemento: HTMLElement | null, valor: number) {
   if (elemento) elemento.style.opacity = String(Math.round(valor * 1000) / 1000)
 }
 
+// O nome da cidade fica à direita do ponto. Se não couber até a borda
+// direita, passa para a esquerda; e, se o ponto vai saindo da tela durante o
+// movimento da câmera, o nome se apaga antes de ficar cortado.
+function ajustarNome(marcador: HTMLDivElement | null, p: Ponto, tela: Tela) {
+  const nome = marcador?.querySelector<HTMLElement>('.mapa-marcador-nome')
+  if (!marcador || !nome) return
+  let largura = Number(nome.dataset.largura)
+  if (!largura) {
+    largura = nome.offsetWidth // medido uma vez só
+    nome.dataset.largura = String(largura)
+  }
+  const afastamento = marcador.classList.contains('com-aviao') ? 22 : 12
+  const margem = 8
+  const aDireita = p.x + afastamento + largura <= tela.largura - margem
+  marcador.classList.toggle('nome-esquerda', !aDireita)
+  const esquerda = aDireita ? p.x + afastamento : p.x - afastamento - largura
+  const direita = esquerda + largura
+  // distância até a borda mais próxima (os nomes têm uns 16px de altura)
+  const folga = Math.min(esquerda, tela.largura - direita, p.y - 10, tela.altura - (p.y + 10))
+  opacidade(nome, faixa(folga, 0, 16))
+}
+
 // ---------- Tela do voo ----------
 
 function Voo() {
@@ -199,8 +221,9 @@ function Voo() {
     const livreFrase: Livre = { topo: alturaFrase + FOLGA_TEXTO, base: FOLGA_TEXTO + FOLGA_NOME_SAO_PAULO, ...lados }
     const livreTexto: Livre = { topo: alturaTopo + FOLGA_TEXTO, base: alturaBase + FOLGA_TEXTO + FOLGA_NOME_SAO_PAULO, ...lados }
     const final = enquadrar(areaFinal({ fase, progresso, falta: 0 }), tela, livreTexto)
-    // "Reduzir movimento": a câmera não voa, fica direto no enquadramento final
-    if (calmo) return [{ em: 0, camera: final }]
+    // "Reduzir movimento" e depois do pouso: a câmera não voa, já começa
+    // direto no enquadramento final (depois do pouso, em São Paulo)
+    if (calmo || fase === 'depois') return [{ em: 0, camera: final }]
     const perto = enquadrar(areaEmVolta(LISBOA, RAIO_LISBOA), tela, livreFrase)
     const inteira = enquadrar(areaDaRota(0, 1), tela, livreTexto)
     return [
@@ -235,17 +258,23 @@ function Voo() {
       const caixa = viewBox(camera)
       svgTerra.current?.setAttribute('viewBox', caixa)
       svgRota.current?.setAttribute('viewBox', caixa)
-      posicionar(marcadorLisboa.current, naTela(LISBOA, camera, tela))
-      posicionar(marcadorSaoPaulo.current, naTela(VIRACOPOS, camera, tela))
+      const pLisboa = naTela(LISBOA, camera, tela)
+      const pSaoPaulo = naTela(VIRACOPOS, camera, tela)
+      posicionar(marcadorLisboa.current, pLisboa)
+      posicionar(marcadorSaoPaulo.current, pSaoPaulo)
+      ajustarNome(marcadorLisboa.current, pLisboa, tela)
+      ajustarNome(marcadorSaoPaulo.current, pSaoPaulo, tela)
       posicionar(aviaoRef.current, naTela(aviao, camera, tela), ` translate(-50%, -50%) rotate(${aviao.angulo}deg)`)
 
       // véu escuro que se abre enquanto o mapa entra (continua o fundo da abertura)
       const opVeu = 0.92 * (1 - faixa(entrada, 0.15, 1))
       // frase de abertura do mapa: surge na entrada e se dissolve quando a câmera se afasta
       // (só começa quando a frase da abertura já saiu da tela)
-      const opFrase = faixa(entrada, 0.75, 1) * (1 - faixa(p, 0.16, 0.28))
+      // (depois do pouso, a frase da promessa não aparece)
+      const opFrase = fase === 'depois' ? 0 : faixa(entrada, 0.75, 1) * (1 - faixa(p, 0.16, 0.28))
       // contagem e aviso: surgem quando a rota inteira está na tela
-      const opTextos = faixa(p, 0.45, 0.58)
+      // (depois do pouso, já surgem junto com o mapa, em São Paulo)
+      const opTextos = fase === 'depois' ? faixa(entrada, 0.6, 1) : faixa(p, 0.45, 0.58)
       // névoa: mais visível na entrada, depois bem leve e só nas bordas
       const opNevoa = 0.85 - 0.6 * faixa(p, 0, 0.4)
 
@@ -269,7 +298,7 @@ function Voo() {
       camada.current?.style.setProperty('--mascara-topo', `${Math.round(mascaraTopo)}px`)
       camada.current?.style.setProperty('--mascara-base', `${Math.round(mascaraBase)}px`)
     },
-    [quadros, tela, aviao, alturaFrase, alturaTopo, alturaBase],
+    [quadros, tela, aviao, alturaFrase, alturaTopo, alturaBase, fase],
   )
 
   useMotionValueEvent(rolagem, 'change', aplicar)
@@ -327,9 +356,11 @@ function Voo() {
         <div ref={veuTopo} className="voo-veu-topo" aria-hidden="true" />
         <div ref={veuBase} className="voo-veu-base" aria-hidden="true" />
 
-        <div ref={frase} className="voo-frase-caixa">
-          <p className="voo-frase">Princesa, eu prometi que chegaria até você...</p>
-        </div>
+        {fase !== 'depois' && (
+          <div ref={frase} className="voo-frase-caixa">
+            <p className="voo-frase">Princesa, eu prometi que chegaria até você...</p>
+          </div>
+        )}
 
         <header ref={topo} className="voo-topo">
           <p className="voo-rotulo">{rotulo}</p>

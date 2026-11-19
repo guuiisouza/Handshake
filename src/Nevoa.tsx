@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { motion, useReducedMotion, type MotionStyle } from 'motion/react'
-import { NEVOA_VIOLETA, VAPOR, iniciarNevoaWebGL } from './NevoaShader'
-
-// Aparências disponíveis: a névoa do site (padrão) ou o vapor da cena da obsidiana
-const APARENCIAS = { nevoa: NEVOA_VIOLETA, vapor: VAPOR }
+import { iniciarNevoaWebGL } from './NevoaShader'
 import './Nevoa.css'
 
 // Névoa de "tinta na água" com luz violeta atrás da obsidiana.
@@ -108,11 +105,11 @@ type Props = {
   centroY?: number
   // quanto rolagem, toque e mouse agitam a fumaça (1 = normal, como na abertura e no mapa)
   sensibilidade?: number
-  // 'nevoa' (padrão) ou 'vapor' (cena da obsidiana)
-  aparencia?: keyof typeof APARENCIAS
+  // 1 = normal; 0.7 = névoa e partículas brilhantes 30% mais fracas
+  intensidade?: number
 }
 
-function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1, aparencia = 'nevoa' }: Props) {
+function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibilidade = 1, intensidade = 1 }: Props) {
   const sistemaRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const calmo = useReducedMotion()
@@ -140,14 +137,13 @@ function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibili
     if (!usarWebGL || !perto || !canvas) return
     const controle = iniciarNevoaWebGL(
       canvas,
-      { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade, aparencia: APARENCIAS[aparencia] },
+      { estatico: Boolean(calmo), centro: [centroX, centroY], sensibilidade, intensidade },
       () => setUsarWebGL(false),
     )
     return () => controle?.parar()
-  }, [usarWebGL, perto, calmo, centroX, centroY, sensibilidade, aparencia])
+  }, [usarWebGL, perto, calmo, centroX, centroY, sensibilidade, intensidade])
 
   // As imagens do plano B só são geradas se ele for usado.
-  // (sem WebGL, o vapor usa a névoa simples do site)
   const fumaca = useMemo(() => (usarWebGL ? null : texturas()), [usarWebGL])
   const imagem = (url: string): CSSProperties => ({ backgroundImage: `url(${url})` })
 
@@ -161,7 +157,7 @@ function Nevoa({ className = '', style, centroX = 0.5, centroY = 0.56, sensibili
 
       {/* plano B: camadas de fumaça deslizando */}
       {fumaca && (
-        <div className="nevoa-fumacas">
+        <div className="nevoa-fumacas" style={{ opacity: intensidade }}>
           <div className="fumaca fumaca-1" style={imagem(fumaca.violeta)} />
           <div className="fumaca fumaca-2" style={imagem(fumaca.lilas)} />
           <div className="fumaca fumaca-3" style={imagem(fumaca.azul)} />
