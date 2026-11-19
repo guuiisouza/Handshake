@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from 'motion/react'
+import { animate, motion, useMotionValue, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import Nevoa from './Nevoa'
 import Obsidiana from './Obsidiana'
 import { faixa } from './vooCamera'
@@ -11,6 +11,8 @@ import './Revelacao.css'
 //    de uma conexão TCP; quando o ACK chega, a conexão se acende.
 // 2. Obsidiana: uma luz de água e uma de lava se encontram, viram a névoa
 //    violeta do site e dela nasce o mesmo bloco da abertura.
+// As duas cenas ficam sobre um fundo comum (névoa e luzes), parado na tela:
+// a passagem de uma para a outra não tem emenda.
 // Com "Reduzir movimento", nada viaja nem cresce: tudo aparece no lugar.
 
 // Textos do documento mestre (sem mudanças)
@@ -205,7 +207,8 @@ function useTocarUmaVez(palco: RefObject<HTMLDivElement | null>, calmo: boolean,
     let jaTocou = false
     const observador = new IntersectionObserver(
       ([entrada]) => {
-        if (!entrada.isIntersecting) {
+        // (encostada na borda, com só uma fresta de menos de 2% à vista, também conta como fora)
+        if (!entrada.isIntersecting || entrada.intersectionRatio < 0.02) {
           // saiu totalmente da tela: volta ao começo
           tocando?.stop()
           tocando = null
@@ -216,7 +219,7 @@ function useTocarUmaVez(palco: RefObject<HTMLDivElement | null>, calmo: boolean,
           tocando = animate(andamento, 1, { duration: duracao, ease: 'linear' })
         }
       },
-      { threshold: [0, 0.6] },
+      { threshold: [0, 0.02, 0.6] },
     )
     observador.observe(elemento)
     return () => {
@@ -228,18 +231,17 @@ function useTocarUmaVez(palco: RefObject<HTMLDivElement | null>, calmo: boolean,
   return andamento
 }
 
-function CenaHandshake() {
-  const palco = useRef<HTMLDivElement>(null)
-  const calmo = Boolean(useReducedMotion())
-  // a troca de pacotes anda no próprio ritmo (0 a 1), sem depender da rolagem
-  const a = useTocarUmaVez(palco, calmo, DURACAO)
+type PropsCena = {
+  palco: RefObject<HTMLDivElement | null>
+  a: MotionValue<number> // andamento da animação da cena (0 a 1)
+  calmo: boolean
+}
 
+function CenaHandshake({ palco, a, calmo }: PropsCena) {
   // "Reduzir movimento": a conexão já aparece pronta, sem pacotes viajando
   const conexao = useTransform(a, (v) => (calmo ? 1 : faixa(v, CONEXAO.de, CONEXAO.ate)))
   const telas = useTransform(conexao, [0, 1], [0.35, 1])
   const telasAcesas = useTransform(conexao, [0, 1], [0, 0.22])
-  // a névoa aparece com a conexão
-  const nevoa = useTransform(conexao, (c) => c * 0.7)
   const frase = useTransform(a, (v) => (calmo ? 1 : trecho(v, FRASE.de, FRASE.ate)))
   const fraseY = useTransform(frase, [0, 1], [12, 0])
   const texto = useTransform(a, (v) => (calmo ? 1 : trecho(v, TEXTO.de, TEXTO.ate)))
@@ -248,11 +250,6 @@ function CenaHandshake() {
   return (
     <section className="rev rev-handshake" aria-label="Handshake">
       <div ref={palco} className="rev-palco">
-        {/* a névoa aparece ao redor quando a conexão se acende */}
-        <motion.div className="rev-nevoa" style={{ opacity: nevoa }}>
-          <Nevoa intensidade={0.7} />
-        </motion.div>
-
         <div className="rev-conteudo">
           <header className="rev-cabecalho">
             <h2 className="rev-titulo">HANDSHAKE</h2>
@@ -301,32 +298,12 @@ function CenaHandshake() {
 // lava) entram de lados opostos e se aproximam devagar. Ao se encontrarem, se
 // fundem na névoa violeta do site; dela surge a obsidiana da abertura e, com
 // ela se estabilizando, a frase e a explicação.
-// As luzes já aparecem fracas nas bordas antes de a cena começar: na troca
-// com o handshake a tela nunca fica preta.
+// As luzes e a névoa ficam no fundo comum das duas cenas (FundoComum, abaixo);
+// aqui ficam só a obsidiana e o texto.
 // Não depende da rolagem: toca sozinha, uma vez, quando a cena aparece.
 const DURACAO_OBSIDIANA = 8 // segundos
 
-function CenaObsidiana() {
-  const palco = useRef<HTMLDivElement>(null)
-  const calmo = Boolean(useReducedMotion())
-  // a animação anda no próprio ritmo (0 = começo, 1 = obsidiana pronta)
-  const a = useTocarUmaVez(palco, calmo, DURACAO_OBSIDIANA)
-
-  // as luzes se aproximam devagar, das bordas até o centro
-  const aproximacao = useTransform(a, (v) => trecho(v, 0, 0.58))
-  const aguaX = useTransform(aproximacao, (t) => `${-40 * (1 - t)}vw`)
-  const lavaX = useTransform(aproximacao, (t) => `${40 * (1 - t)}vw`)
-  // ficam um pouco mais fortes ao se aproximar e se dissolvem ao se encontrar
-  const luzes = useTransform(a, (v) => (calmo ? 0 : (0.55 + 0.3 * trecho(v, 0, 0.4)) * (1 - trecho(v, 0.42, 0.72))))
-  // enquanto se aproximam, as duas cores vão ganhando o violeta do site:
-  // o encontro já nasce violeta (sem misturar em cinza)
-  const tomVioleta = useTransform(a, (v) => trecho(v, 0.18, 0.5))
-  const tomProprio = useTransform(tomVioleta, (t) => 1 - t)
-  const luzesEscala = useTransform(a, (v) => 1 - 0.25 * trecho(v, 0.38, 0.7))
-  // no encontro nasce a luz violeta, e com ela a névoa do site
-  const violeta = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.36, 0.68)))
-  const violetaEscala = useTransform(violeta, [0, 1], [0.6, 1])
-  const nevoa = useTransform(a, (v) => (calmo ? 0.9 : 0.9 * trecho(v, 0.42, 0.8)))
+function CenaObsidiana({ palco, a, calmo, secao }: PropsCena & { secao: RefObject<HTMLElement | null> }) {
   // a obsidiana surge da névoa e se estabiliza
   const bloco = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.55, 0.82)))
   const blocoEscala = useTransform(bloco, [0, 1], [0.92, 1])
@@ -338,24 +315,8 @@ function CenaObsidiana() {
   const textoY = useTransform(texto, [0, 1], [12, 0])
 
   return (
-    <section className="rev rev-obsidiana" aria-label="Obsidiana">
+    <section ref={secao} className="rev rev-obsidiana" aria-label="Obsidiana">
       <div ref={palco} className="rev-palco">
-        <div className="lv-luzes" aria-hidden="true">
-          <motion.div className="lv-luz" style={{ x: aguaX, opacity: luzes, scale: luzesEscala }}>
-            <motion.div className={calmo ? 'lv-luz-cor lv-agua parado' : 'lv-luz-cor lv-agua'} style={{ opacity: tomProprio }} />
-            <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
-          </motion.div>
-          <motion.div className="lv-luz" style={{ x: lavaX, opacity: luzes, scale: luzesEscala }}>
-            <motion.div className={calmo ? 'lv-luz-cor lv-lava parado' : 'lv-luz-cor lv-lava'} style={{ opacity: tomProprio }} />
-            <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
-          </motion.div>
-          <motion.div className="lv-violeta" style={{ opacity: violeta, scale: violetaEscala }} />
-        </div>
-
-        <motion.div className="lv-nevoa" style={{ opacity: nevoa }} aria-hidden="true">
-          <Nevoa centroY={0.6} />
-        </motion.div>
-
         <div className="lv-centro">
           <motion.div className="lv-bloco" style={{ opacity: bloco, scale: calmo ? 1 : blocoEscala, y: calmo ? 0 : blocoY }}>
             <Obsidiana calmo={calmo} />
@@ -374,12 +335,89 @@ function CenaObsidiana() {
   )
 }
 
-function Revelacao() {
+// ---------- Fundo comum das duas cenas ----------
+// Uma camada só, parada na tela enquanto as duas cenas rolam por cima dela:
+// a névoa (com as partículas), a luz violeta e as luzes da água e da lava.
+// Como é a mesma camada nas duas cenas, não existe emenda entre elas: a névoa
+// simplesmente continua. Cada luz muda de intensidade aos poucos, pela rolagem
+// e pelas animações, sem saltos de brilho.
+type PropsFundo = {
+  aHandshake: MotionValue<number>
+  aObsidiana: MotionValue<number>
+  entrada: MotionValue<number> // 0 = só o handshake na tela; 1 = a cena da obsidiana ocupa a tela
+  calmo: boolean
+}
+
+function FundoComum({ aHandshake, aObsidiana, entrada, calmo }: PropsFundo) {
+  // quanto da cena da obsidiana já entrou (com curva suave)
+  const vis = useTransform(entrada, (e) => suave(e))
+  // névoa: acende com a conexão do handshake (no mesmo nível de antes:
+  // 70% de intensidade x 70% de opacidade = 0,49), continua igual durante a
+  // passagem e fica mais forte quando as luzes se fundem
+  const nevoa = useTransform([aHandshake, aObsidiana, vis], ([h, o, e]: number[]) => {
+    const conexao = calmo ? 1 : faixa(h, CONEXAO.de, CONEXAO.ate)
+    const naObsidiana = 0.49 + 0.41 * (calmo ? 1 : trecho(o, 0.42, 0.8))
+    return conexao * 0.49 * (1 - e) + naObsidiana * e
+  })
+  // as luzes vão surgindo nas laterais conforme a cena da obsidiana entra;
+  // ficam um pouco mais fortes ao se aproximar e se dissolvem ao se encontrar
+  const luzes = useTransform([aObsidiana, entrada], ([o, e]: number[]) => {
+    if (calmo) return 0
+    const surgir = suave(Math.min(1, e / 0.6))
+    return (0.55 * surgir + 0.3 * trecho(o, 0, 0.4)) * (1 - trecho(o, 0.42, 0.72))
+  })
+  // as luzes se aproximam devagar, das bordas até o centro
+  const aproximacao = useTransform(aObsidiana, (v) => trecho(v, 0, 0.58))
+  const aguaX = useTransform(aproximacao, (t) => `${-40 * (1 - t)}vw`)
+  const lavaX = useTransform(aproximacao, (t) => `${40 * (1 - t)}vw`)
+  const luzesEscala = useTransform(aObsidiana, (v) => 1 - 0.25 * trecho(v, 0.38, 0.7))
+  // enquanto se aproximam, as duas cores vão ganhando o violeta do site:
+  // o encontro já nasce violeta (sem misturar em cinza)
+  const tomVioleta = useTransform(aObsidiana, (v) => trecho(v, 0.18, 0.5))
+  const tomProprio = useTransform(tomVioleta, (t) => 1 - t)
+  // no encontro nasce a luz violeta (e some de novo se a pessoa voltar para o handshake)
+  const violeta = useTransform([aObsidiana, vis], ([o, e]: number[]) => (calmo ? 1 : trecho(o, 0.36, 0.68)) * e)
+  const violetaEscala = useTransform(aObsidiana, (v) => 0.6 + 0.4 * trecho(v, 0.36, 0.68))
+
   return (
-    <>
-      <CenaHandshake />
-      <CenaObsidiana />
-    </>
+    <div className="rev-fundo" aria-hidden="true">
+      <motion.div className="rev-fundo-nevoa" style={{ opacity: nevoa }}>
+        <Nevoa centroY={0.6} />
+      </motion.div>
+
+      <div className="lv-luzes">
+        <motion.div className="lv-luz" style={{ x: aguaX, opacity: luzes, scale: luzesEscala }}>
+          <motion.div className={calmo ? 'lv-luz-cor lv-agua parado' : 'lv-luz-cor lv-agua'} style={{ opacity: tomProprio }} />
+          <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
+        </motion.div>
+        <motion.div className="lv-luz" style={{ x: lavaX, opacity: luzes, scale: luzesEscala }}>
+          <motion.div className={calmo ? 'lv-luz-cor lv-lava parado' : 'lv-luz-cor lv-lava'} style={{ opacity: tomProprio }} />
+          <motion.div className={calmo ? 'lv-luz-cor lv-roxa parado' : 'lv-luz-cor lv-roxa'} style={{ opacity: tomVioleta }} />
+        </motion.div>
+        <motion.div className="lv-violeta" style={{ opacity: violeta, scale: violetaEscala }} />
+      </div>
+    </div>
+  )
+}
+
+function Revelacao() {
+  const calmo = Boolean(useReducedMotion())
+  const palcoHandshake = useRef<HTMLDivElement>(null)
+  const palcoObsidiana = useRef<HTMLDivElement>(null)
+  const secaoObsidiana = useRef<HTMLElement>(null)
+  // cada cena toca a própria animação, uma vez, quando aparece
+  const aHandshake = useTocarUmaVez(palcoHandshake, calmo, DURACAO)
+  const aObsidiana = useTocarUmaVez(palcoObsidiana, calmo, DURACAO_OBSIDIANA)
+  // passagem entre as cenas: 0 quando a cena da obsidiana começa a entrar por
+  // baixo, 1 quando ela ocupa a tela
+  const { scrollYProgress: entrada } = useScroll({ target: secaoObsidiana, offset: ['start end', 'start start'] })
+
+  return (
+    <div className="rev-final">
+      <FundoComum aHandshake={aHandshake} aObsidiana={aObsidiana} entrada={entrada} calmo={calmo} />
+      <CenaHandshake palco={palcoHandshake} a={aHandshake} calmo={calmo} />
+      <CenaObsidiana palco={palcoObsidiana} a={aObsidiana} calmo={calmo} secao={secaoObsidiana} />
+    </div>
   )
 }
 
