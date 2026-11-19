@@ -4,3 +4,13 @@
   max-width: 430px;
   margin: 0 auto;
 }
+
+/* Rodapé bem discreto, no fim do site, depois da obsidiana final */
+.rodape {
+  padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.38);
+}

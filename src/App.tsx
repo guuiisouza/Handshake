@@ -30,6 +30,8 @@ function App() {
       <Galeria />
 
       <Revelacao />
+
+      <footer className="rodape">Criado por Guilherme Souza</footer>
     </main>
   )
 }

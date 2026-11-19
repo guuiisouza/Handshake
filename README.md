@@ -30,3 +30,9 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Autoria
+
+Projeto criado e desenvolvido por **Guilherme Lemos de Souza**.
+
+Copyright (c) 2026 Guilherme Lemos de Souza. Todos os direitos reservados. Veja o arquivo [LICENSE](LICENSE).

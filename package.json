@@ -2,6 +2,8 @@
   "name": "handshake",
   "private": true,
   "version": "0.0.0",
+  "author": "Guilherme Lemos de Souza",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
