@@ -24,4 +24,8 @@ export default defineConfig({
       },
     }),
   ],
+  // teste no iPhone pelo túnel temporário da Cloudflare (npm run dev + cloudflared)
+  server: {
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })
