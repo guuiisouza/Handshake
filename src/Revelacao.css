@@ -41,13 +41,17 @@
   text-align: center;
 }
 
-/* cada cena ocupa uma tela (e cresce, se o conteúdo precisar). Nada é
-   cortado em cima ou embaixo (seria uma linha na passagem entre as cenas);
-   só nas laterais, para nunca aparecer rolagem para o lado */
+/* cada cena ocupa exatamente uma tela (cada uma é uma "página" do
+   paginador). Só cresce se o conteúdo não couber, o que não acontece nos
+   tamanhos de iPhone e computador testados. Nada é cortado em cima ou
+   embaixo (seria uma linha na passagem entre as cenas); só nas laterais,
+   para nunca aparecer rolagem para o lado. O conteúdo fica longe do relógio
+   e do indicador de início do iPhone (safe-area). */
 .rev-palco {
   position: relative;
   min-height: 100vh;
-  min-height: 100lvh;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   overflow-x: clip;
   overflow-y: visible;
   display: flex;
@@ -371,7 +375,8 @@
   flex-direction: column;
   align-items: center;
   gap: clamp(8px, 2.4vh, 28px);
-  padding: 32px 24px;
+  /* embaixo, espaço para o rodapé "Criado por..." */
+  padding: 32px 24px 64px;
 }
 
 /* ---------- Menos movimento ---------- */

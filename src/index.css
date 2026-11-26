@@ -22,6 +22,9 @@ html {
   overflow-x: hidden;
   overflow-x: clip;
   background: var(--preto);
+  /* sem o "elástico" nas pontas da página: ele atrapalharia as trocas de
+     página do paginador (Paginas.ts) */
+  overscroll-behavior-y: none;
 }
 
 * {

@@ -5,9 +5,14 @@
   margin: 0 auto;
 }
 
-/* Rodapé bem discreto, no fim do site, depois da obsidiana final */
+/* Rodapé bem discreto, no pé da última tela (a da obsidiana final) */
 .rodape {
-  padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
   text-align: center;
   font-size: 0.68rem;
   letter-spacing: 0.16em;

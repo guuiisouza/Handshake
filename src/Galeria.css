@@ -135,14 +135,33 @@
 
 /* ---------- iPhone: duas fotos por tela ---------- */
 
+/* cada par é exatamente uma tela (uma "página" do paginador). As margens de
+   cima e de baixo respeitam o relógio e o indicador de início do iPhone. */
 .galeria-par {
-  min-height: 100vh;
-  min-height: 100svh;
+  --par-topo: calc(6vh + env(safe-area-inset-top));
+  --par-base: calc(6vh + env(safe-area-inset-bottom));
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 6vh 24px;
+  padding: var(--par-topo) 24px var(--par-base);
+}
+
+/* o primeiro par divide a tela com o título da galeria, que fica por cima,
+   no alto da mesma tela */
+.galeria-par-primeiro {
+  --par-topo: calc(116px + env(safe-area-inset-top));
+}
+
+.galeria-modo-pares .galeria-cabecalho {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: calc(28px + env(safe-area-inset-top)) 24px 0;
+  pointer-events: none;
 }
 
 /* conteúdo do par: é ele que se afasta e se aproxima na troca de cena */
@@ -159,7 +178,9 @@
   margin: 0;
   /* sem a frase embaixo, as fotos ficam um pouco maiores */
   width: min(70vw, 36vh, 340px);
-  width: min(70vw, 36svh, 340px);
+  /* as duas fotos são quadradas e ficam uma embaixo da outra (36px entre
+     elas): a largura nunca passa do que cabe na altura livre do par */
+  width: min(70vw, 36svh, 340px, calc((100dvh - var(--par-topo) - var(--par-base) - 36px) / 2.15));
 }
 
 /* uma foto um pouco à esquerda, a outra um pouco à direita.
@@ -173,13 +194,28 @@
 
 /* ---------- Computador: a mesa ---------- */
 
+/* a galeria inteira é exatamente uma tela: o título em cima e a mesa
+   ocupando o resto */
+.galeria-modo-mesa {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* o fundo da montanha não ocupa lugar na coluna (nem encolhe) */
+.galeria-modo-mesa .galeria-fundo {
+  flex-shrink: 0;
+}
+
 .galeria-cabecalho:has(+ .galeria-mesa) {
-  padding: 9vh 24px 0;
+  padding: 6vh 24px 0;
 }
 
 .galeria-mesa {
   position: relative;
-  height: max(560px, 84vh);
+  flex: 1;
+  min-height: 0;
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 

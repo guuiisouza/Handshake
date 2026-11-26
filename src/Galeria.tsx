@@ -273,7 +273,8 @@ function Ampliada({ indice, giroOrigem, comNavegacao, aoFechar, aoNavegar }: Pro
 // e o próximo vem de longe, crescendo e aparecendo. No meio da troca, a neve
 // do cume fica mais forte (Galeria.tsx > --vao) e faz a passagem.
 // Com "Reduzir movimento": só aparece e some, sem mudar de tamanho.
-function ParCena({ aoEntrar, children }: { aoEntrar: () => void; children: ReactNode }) {
+// primeiro: o par divide a tela com o título da galeria (fotos um pouco menores, se precisar)
+function ParCena({ aoEntrar, primeiro, children }: { aoEntrar: () => void; primeiro: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const calmo = useReducedMotion()
   // 0 = o par começa a entrar por baixo; 0.5 = no centro da tela; 1 = saiu por cima
@@ -282,7 +283,7 @@ function ParCena({ aoEntrar, children }: { aoEntrar: () => void; children: React
   const opacidade = useTransform(scrollYProgress, [0.1, 0.38, 0.62, 0.9], [0, 1, 1, 0])
 
   return (
-    <motion.div ref={ref} className="galeria-par" onViewportEnter={aoEntrar} viewport={{ once: true, amount: 0.3 }}>
+    <motion.div ref={ref} className={primeiro ? 'galeria-par galeria-par-primeiro' : 'galeria-par'} onViewportEnter={aoEntrar} viewport={{ once: true, amount: 0.3 }}>
       <motion.div className="par-cena" style={calmo ? { opacity: opacidade } : { opacity: opacidade, scale: escala }}>
         {children}
       </motion.div>
@@ -414,7 +415,11 @@ function Galeria() {
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup>
-        <section ref={secao} className={aberta !== null ? 'galeria com-ampliada' : 'galeria'} aria-label="Nossas Memórias">
+        <section
+          ref={secao}
+          className={['galeria', mesa ? 'galeria-modo-mesa' : 'galeria-modo-pares', aberta !== null ? 'com-ampliada' : ''].join(' ').trim()}
+          aria-label="Nossas Memórias"
+        >
           {/* fundo fixo: a montanha (com parallax) fica atrás das fotos */}
           <div ref={fundo} className="galeria-fundo">
             <Montanha subida={scrollYProgress} vao={vao} nuvemNosVaos={!mesa} />
@@ -441,7 +446,7 @@ function Galeria() {
           ) : (
             // iPhone: quatro telas, duas fotos em cada
             [0, 2, 4, 6].map((inicio) => (
-              <ParCena key={inicio} aoEntrar={() => pousar([inicio, inicio + 1])}>
+              <ParCena key={inicio} primeiro={inicio === 0} aoEntrar={() => pousar([inicio, inicio + 1])}>
                 {/* a frase aparece só ao tocar na foto, como no computador */}
                 {[inicio, inicio + 1].map((i) => (
                   <div key={FOTOS[i].arquivo} className={i % 2 === 0 ? 'par-lugar par-esquerda' : 'par-lugar par-direita'}>

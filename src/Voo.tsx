@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useMotionValueEvent, useReducedMotion, useScroll, useSpring } from 'motion/react'
+import { useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react'
 import Nevoa from './Nevoa'
 import { CONTINENTES, GRADE, LISBOA, ROTA, VIRACOPOS } from './mapa'
 import { agora, estadoDoVoo, formatarDuracao, fraseJuntos, tempoJuntos, unidade, type EstadoVoo } from './vooTempo'
@@ -278,6 +278,9 @@ function Voo() {
   const alturaFrase = useTamanho(frase, { largura: 0, altura: 120 }).altura
   const alturaTopo = useTamanho(topo, { largura: 0, altura: 140 }).altura
   const alturaBase = useTamanho(base, { largura: 0, altura: 80 }).altura
+  // altura da seção inteira, medida só quando muda (não a cada quadro: ler
+  // tamanhos durante o movimento força o navegador a recalcular a página)
+  const alturaSecao = useTamanho(secao, { largura: 0, altura: window.innerHeight * 3 }).altura
 
   const aviao = useMemo(() => posicaoNaRota(progresso), [progresso])
 
@@ -302,21 +305,18 @@ function Voo() {
   }, [tela, alturaFrase, alturaTopo, alturaBase, fase, progresso, calmo])
 
   // Rolagem: 0 quando o mapa começa a entrar por baixo da tela, 1 no fim.
-  // A mola deixa a câmera com um leve amortecimento, como uma câmera de verdade.
-  const { scrollYProgress } = useScroll({ target: secao, offset: ['start end', 'end end'] })
-  const comMola = useSpring(scrollYProgress, { stiffness: 170, damping: 32, mass: 0.5 })
-  const rolagem = calmo ? scrollYProgress : comMola
+  // A câmera segue a rolagem exatamente, sem mola: ela nunca se move sozinha
+  // nem fica atrasada. A suavidade vem do deslize do paginador (Paginas.ts).
+  // Assim, se a pessoa trocar de tela no meio do voo da câmera, a câmera
+  // simplesmente acompanha a página, na hora; nada espera o voo terminar.
+  const { scrollYProgress: rolagem } = useScroll({ target: secao, offset: ['start end', 'end end'] })
 
   // Aplica a câmera e as transparências direto nos elementos, a cada quadro,
   // sem o React recalcular a tela (fica bem mais leve no iPhone).
   const aplicar = useCallback(
     (q: number) => {
-      const elSecao = secao.current
-      const elPalco = palco.current
-      if (!elSecao || !elPalco) return
-
       // parte da rolagem em que o mapa ainda está entrando na tela
-      const entrando = elPalco.offsetHeight / elSecao.offsetHeight
+      const entrando = alturaSecao > 0 ? Math.min(tela.altura / alturaSecao, 1) : 0.4
       const entrada = faixa(q, 0, entrando)
       const p = faixa(q, entrando, 1)
 
@@ -368,7 +368,7 @@ function Voo() {
       // (uma vez só: a classe não sai mais, e o coração fica)
       if (fase === 'depois' && opTextos > 0.5) camada.current?.classList.add('coracao-ativo')
     },
-    [quadros, tela, aviao, alturaFrase, alturaTopo, alturaBase, fase],
+    [quadros, tela, aviao, alturaFrase, alturaTopo, alturaBase, alturaSecao, fase],
   )
 
   useMotionValueEvent(rolagem, 'change', aplicar)

@@ -330,6 +330,7 @@ function CenaObsidiana({ palco, a, calmo, secao }: PropsCena & { secao: RefObjec
             </motion.p>
           </div>
         </div>
+        <footer className="rodape">Criado por Guilherme Souza</footer>
       </div>
     </section>
   )
