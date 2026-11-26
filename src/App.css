@@ -5,7 +5,8 @@
   margin: 0 auto;
 }
 
-/* Rodapé bem discreto, no pé da última tela (a da obsidiana final) */
+/* Rodapé bem discreto, no pé da última tela: a da escolha da cafeteria
+   (até o prazo) ou a da obsidiana final (depois) */
 .rodape {
   position: absolute;
   z-index: 2;

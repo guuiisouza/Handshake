@@ -1,0 +1,467 @@
+/* ---------- Cafeterias: a última tela (até o prazo da votação) ----------
+   Mesma linha das outras telas: uma tela inteira no paginador, a mesma névoa
+   do Handshake e da obsidiana, as mesmas classes de texto (rev-destaque,
+   rev-texto) e o mesmo respiro.
+   Cada cartão: cena em pixel art, título, descrição curta, quatro
+   características e o botão no fim. A cena ocupa o espaço que sobra, então
+   o cartão sempre cabe na tela, sem apertar os textos.
+   iPhone: um cartão por vez, deslizando para os lados (com as bolinhas).
+   Computador: os três lado a lado. */
+
+.cafe {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  text-align: center;
+  background: var(--preto);
+}
+
+/* a névoa, igual à das telas anteriores; dissolve em cima e embaixo, para
+   continuar a névoa da obsidiana sem emenda */
+.cafe-fundo {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.cafe-conteudo {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* mesmo respiro das telas do Handshake e da obsidiana */
+  gap: clamp(12px, 2.6dvh, 30px);
+  padding: calc(20px + env(safe-area-inset-top)) 0 calc(54px + env(safe-area-inset-bottom));
+}
+
+/* ---------- Textos (tipografia das outras telas) ---------- */
+
+.cafe-cabecalho {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(6px, 1.2dvh, 12px);
+  padding: 0 22px;
+}
+
+/* rev-destaque, só um pouco menor: a pergunta é longa. A fonte é a mesma das
+   frases das outras telas (o site usa a fonte de pixel nos h2 por padrão). */
+.cafe-titulo {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.2rem, 5.2vw, 1.9rem);
+}
+
+.cafe-subtitulo {
+  font-size: clamp(0.84rem, 3.4vw, 1.02rem);
+  line-height: 1.5;
+}
+
+.cafe-erro {
+  flex: none;
+  padding: 0 22px;
+  font-size: 0.85rem;
+  color: rgba(var(--luz-clara), 0.85);
+}
+
+.cafe-erro:empty {
+  display: none;
+}
+
+/* texto só para leitor de tela (descrição de cada cena) */
+.cafe-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Os três cartões ---------- */
+
+.cafe-escolha {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* iPhone: trilho que desliza para os lados, um cartão no centro e a borda
+   do próximo aparecendo */
+.cafe-opcoes {
+  /* largura do cartão e o quanto ele ocupa sem a cena (textos, botão, margens) */
+  --largura-cartao: 82vw;
+  --margem-cartao: 28px;
+  --sem-a-cena: 262px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  padding: 0 9vw;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 9vw;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.cafe-opcoes::-webkit-scrollbar {
+  display: none;
+}
+
+/* O cartão ocupa a altura disponível, mas nunca mais do que precisa (a cena
+   na largura toda + os textos): assim não sobra vão dentro dele. Os três
+   têm sempre a mesma altura. */
+.cafe-cartao {
+  flex: 0 0 var(--largura-cartao);
+  height: 100%;
+  max-height: calc((var(--largura-cartao) - var(--margem-cartao)) * 0.75 + var(--sem-a-cena));
+  align-self: center;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--luz-clara), 0.1);
+  background: linear-gradient(to bottom, rgba(var(--luz), 0.07), rgba(var(--luz), 0.02));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+/* a cena ocupa o espaço que sobra no cartão, sempre em 4:3 */
+.cafe-figura {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 70px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+
+.cafe-figura .cafe-cena {
+  width: min(100cqw, 100cqh * 4 / 3);
+}
+
+.cafe-cartao-textos {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cafe-cartao-titulo {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--texto);
+  text-shadow: 0 0 16px rgba(var(--luz), 0.35);
+}
+
+/* sempre o espaço de duas linhas: os três cartões ficam iguais, mesmo
+   quando uma descrição cabe numa linha só */
+.cafe-cartao-descricao {
+  min-height: 2.8em;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: rgba(var(--luz-clara), 0.82);
+}
+
+/* as quatro características, com um "pixel" violeta de marcador */
+.cafe-pontos {
+  list-style: none;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: rgba(var(--luz-clara), 0.92);
+}
+
+.cafe-pontos li {
+  position: relative;
+  padding-left: 14px;
+}
+
+.cafe-pontos li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.5em;
+  width: 5px;
+  height: 5px;
+  background: rgba(var(--luz), 0.85);
+  box-shadow: 0 0 6px rgba(var(--luz), 0.6);
+}
+
+.cafe-acao {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cafe-atual {
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.75);
+}
+
+.cafe-botao {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgba(var(--luz), 0.55);
+  border-radius: 999px;
+  background: rgba(var(--luz), 0.12);
+  color: var(--texto);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(var(--luz), 0.15);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cafe-botao:hover:not(:disabled) {
+  background: rgba(var(--luz), 0.22);
+  border-color: rgba(var(--luz), 0.85);
+  box-shadow: 0 0 26px rgba(var(--luz), 0.3);
+}
+
+.cafe-botao:focus-visible,
+.cafe-mudar:focus-visible,
+.cafe-bolinha:focus-visible {
+  outline: 2px solid rgba(var(--luz-clara), 0.85);
+  outline-offset: 3px;
+}
+
+.cafe-botao:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.cafe-botao[aria-busy='true'] {
+  opacity: 1;
+}
+
+/* a opção que está valendo (quando ela decide trocar) */
+.cafe-cartao.atual {
+  border-color: rgba(var(--luz), 0.55);
+  box-shadow: 0 0 0 1px rgba(var(--luz), 0.35), 0 0 30px rgba(var(--luz), 0.2), 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* bolinhas (iPhone): qual cartão está na tela */
+.cafe-bolinhas {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.cafe-bolinha {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cafe-bolinha::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: rgba(var(--luz-clara), 0.3);
+  transition: background 0.3s ease, width 0.3s ease;
+}
+
+.cafe-bolinha.ativa::before {
+  width: 14px;
+  background: rgba(var(--luz), 0.95);
+  box-shadow: 0 0 8px rgba(var(--luz), 0.6);
+}
+
+/* link discreto: "Mudar minha escolha" / "Manter minha escolha" */
+.cafe-mudar {
+  flex: none;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: rgba(var(--luz-clara), 0.8);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(var(--luz), 0.6);
+  cursor: pointer;
+}
+
+.cafe-mudar:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Depois da escolha ---------- */
+
+.cafe-feito {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.2dvh, 22px);
+  padding: 0 22px;
+}
+
+.cafe-escolhida {
+  flex: none;
+  width: min(64vw, calc(30dvh * 4 / 3), 300px);
+  aspect-ratio: 4 / 3;
+}
+
+.cafe-escolhida .cafe-cena {
+  box-shadow: 0 0 0 2px rgba(var(--luz), 0.6), 0 0 44px rgba(var(--luz), 0.35);
+}
+
+.cafe-feito-lugar {
+  font-family: 'Pixelify Sans', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--texto);
+  text-shadow: 0 0 16px rgba(var(--luz), 0.35);
+}
+
+.cafe-mensagem {
+  max-width: 30rem;
+  font-style: italic;
+}
+
+/* ---------- Cena em pixel art ---------- */
+
+.cafe-cena {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #0b0710;
+  box-shadow: 0 0 0 1px rgba(var(--luz), 0.28), 0 10px 22px rgba(0, 0, 0, 0.55);
+  transition: box-shadow 0.4s ease;
+}
+
+.cafe-cena svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* luz do interior: âmbar (A), lateral quente (B), rosada (C) */
+.cafe-cena-luz {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.cafe-cena-a .cafe-cena-luz {
+  background: radial-gradient(circle at 68% 30%, rgba(242, 169, 78, 0.32), transparent 55%);
+}
+
+.cafe-cena-b .cafe-cena-luz {
+  background: radial-gradient(ellipse 60% 80% at 90% 35%, rgba(255, 215, 154, 0.26), transparent 65%);
+}
+
+.cafe-cena-c .cafe-cena-luz {
+  background: radial-gradient(ellipse 70% 60% at 45% 20%, rgba(243, 166, 192, 0.26), transparent 65%);
+}
+
+/* vapor subindo das xícaras, em degraus de pixel */
+.cafe-cena-vapor {
+  animation: cafe-vapor 2.4s steps(4, end) infinite;
+}
+
+@keyframes cafe-vapor {
+  0%   { transform: translateY(0); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateY(-4px); opacity: 0; }
+}
+
+/* brilho passando pela redoma de vidro */
+.cafe-cena-brilho {
+  animation: cafe-brilho 3.2s steps(6, end) infinite;
+}
+
+@keyframes cafe-brilho {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+/* ---------- Computador: os três lado a lado ---------- */
+
+@media (min-width: 760px) {
+  .cafe-opcoes {
+    --vao-cartoes: clamp(18px, 2.4vw, 32px);
+    --largura-cartao: calc((min(100vw, 1040px) - 56px - 2 * var(--vao-cartoes)) / 3);
+    --margem-cartao: 36px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: var(--vao-cartoes);
+    padding: 0 28px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .cafe-cartao {
+    padding: 16px 18px 18px;
+  }
+
+  .cafe-bolinhas {
+    display: none;
+  }
+}
+
+/* ---------- Menos movimento ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cafe-cena-vapor,
+  .cafe-cena-brilho {
+    animation: none;
+  }
+
+  .cafe-opcoes {
+    scroll-behavior: auto;
+  }
+}

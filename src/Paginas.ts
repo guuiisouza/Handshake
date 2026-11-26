@@ -85,8 +85,8 @@ export function paradas(): Parada[] {
     if (galeria) lista.push({ y: topo(galeria), minimo: 0 })
   }
 
-  // Handshake e cena final
-  document.querySelectorAll('.rev').forEach((cena) => lista.push({ y: topo(cena), minimo: 0 }))
+  // Handshake, cena final e a escolha da cafeteria (última tela)
+  document.querySelectorAll('.rev, .cafe').forEach((cena) => lista.push({ y: topo(cena), minimo: 0 }))
 
   // dentro dos limites da página, em ordem, sem repetidas
   const fim = document.documentElement.scrollHeight - tela
@@ -307,25 +307,35 @@ export function usePaginas(ligado: boolean) {
     }
 
     // ----- Dedo (iPhone) -----
-    let toque: { x: number; y: number; t: number; trocou: boolean } | null = null
+    // Áreas marcadas com data-lateral (os cartões das cafeterias no iPhone)
+    // deslizam para os lados sozinhas: um arraste mais para o lado do que
+    // para cima/baixo é delas, e o paginador não interfere.
+    type Toque = { x: number; y: number; t: number; trocou: boolean; lateral: boolean | null; naAreaLateral: boolean }
+    let toque: Toque | null = null
     const aoTocar = (e: TouchEvent) => {
       if (livre() || e.touches.length > 1) {
         toque = null // dois dedos: pinça livre
         return
       }
       const p = e.touches[0]
-      toque = { x: p.clientX, y: p.clientY, t: performance.now(), trocou: false }
+      const naAreaLateral = e.target instanceof Element && Boolean(e.target.closest('[data-lateral]'))
+      toque = { x: p.clientX, y: p.clientY, t: performance.now(), trocou: false, lateral: null, naAreaLateral }
     }
     const aoArrastar = (e: TouchEvent) => {
       if (!toque || e.touches.length > 1 || livre()) {
         toque = null
         return
       }
-      e.preventDefault() // a página não rola sozinha: quem move é o paginador
-      if (toque.trocou) return // um gesto troca uma tela só
       const p = e.touches[0]
       const dy = toque.y - p.clientY
       const dx = toque.x - p.clientX
+      // decide uma vez, no começo do arraste, se ele é lateral (dentro da área lateral)
+      if (toque.lateral === null && Math.max(Math.abs(dx), Math.abs(dy)) > 6) {
+        toque.lateral = toque.naAreaLateral && Math.abs(dx) > Math.abs(dy)
+      }
+      if (toque.lateral) return // deslize para o lado: o navegador cuida
+      e.preventDefault() // a página não rola sozinha: quem move é o paginador
+      if (toque.trocou) return // um gesto troca uma tela só
       // passou do limite ainda com o dedo na tela: troca agora
       if (Math.abs(dy) > DEDO_MINIMO && Math.abs(dy) > Math.abs(dx)) {
         toque.trocou = true
@@ -333,7 +343,7 @@ export function usePaginas(ligado: boolean) {
       }
     }
     const aoSoltar = (e: TouchEvent) => {
-      if (!toque || toque.trocou) {
+      if (!toque || toque.trocou || toque.lateral) {
         toque = null
         return
       }

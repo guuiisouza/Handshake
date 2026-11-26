@@ -28,3 +28,10 @@ CLAUDE.md
 .claude/
 HANDSHAKE_DOCUMENTO_MESTRE.md
 HANDSHAKE_PROMPT_FINAL.md
+
+# Notas pessoais (Obsidian)
+.obsidian/
+
+# Segredos de teste do Worker no computador e dados locais do wrangler
+.dev.vars*
+.wrangler/

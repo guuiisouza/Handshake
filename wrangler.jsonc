@@ -1,7 +1,20 @@
 {
   "name": "handshake",
   "compatibility_date": "2026-11-16",
+  // Servidor da votação das cafeterias (rota /api/voto)
+  "main": "./worker/index.ts",
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // O servidor só roda para /api/*. Páginas, fotos e scripts continuam
+    // sendo entregues direto pela Cloudflare, exatamente como antes.
+    "run_worker_first": ["/api/*"]
+  },
+  // "Caderninho" de dados da Cloudflare: guarda a escolha e as tentativas
+  "kv_namespaces": [
+    {
+      "binding": "VOTOS",
+      "id": "7df3dc98f03d46e38ad89c34d5e594ee"
+    }
+  ]
 }

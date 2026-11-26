@@ -303,7 +303,14 @@ function CenaHandshake({ palco, a, calmo }: PropsCena) {
 // Não depende da rolagem: toca sozinha, uma vez, quando a cena aparece.
 const DURACAO_OBSIDIANA = 8 // segundos
 
-function CenaObsidiana({ palco, a, calmo, secao }: PropsCena & { secao: RefObject<HTMLElement | null> }) {
+// comRodape: esta é a última tela do site (depois do prazo da votação)
+function CenaObsidiana({
+  palco,
+  a,
+  calmo,
+  secao,
+  comRodape,
+}: PropsCena & { secao: RefObject<HTMLElement | null>; comRodape: boolean }) {
   // a obsidiana surge da névoa e se estabiliza
   const bloco = useTransform(a, (v) => (calmo ? 1 : trecho(v, 0.55, 0.82)))
   const blocoEscala = useTransform(bloco, [0, 1], [0.92, 1])
@@ -330,7 +337,7 @@ function CenaObsidiana({ palco, a, calmo, secao }: PropsCena & { secao: RefObjec
             </motion.p>
           </div>
         </div>
-        <footer className="rodape">Criado por Guilherme Souza</footer>
+        {comRodape && <footer className="rodape">Criado por Guilherme Souza</footer>}
       </div>
     </section>
   )
@@ -401,7 +408,7 @@ function FundoComum({ aHandshake, aObsidiana, entrada, calmo }: PropsFundo) {
   )
 }
 
-function Revelacao() {
+function Revelacao({ comRodape }: { comRodape: boolean }) {
   const calmo = Boolean(useReducedMotion())
   const palcoHandshake = useRef<HTMLDivElement>(null)
   const palcoObsidiana = useRef<HTMLDivElement>(null)
@@ -417,7 +424,7 @@ function Revelacao() {
     <div className="rev-final">
       <FundoComum aHandshake={aHandshake} aObsidiana={aObsidiana} entrada={entrada} calmo={calmo} />
       <CenaHandshake palco={palcoHandshake} a={aHandshake} calmo={calmo} />
-      <CenaObsidiana palco={palcoObsidiana} a={aObsidiana} calmo={calmo} secao={secaoObsidiana} />
+      <CenaObsidiana palco={palcoObsidiana} a={aObsidiana} calmo={calmo} secao={secaoObsidiana} comRodape={comRodape} />
     </div>
   )
 }
