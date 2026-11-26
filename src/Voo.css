@@ -193,6 +193,81 @@
   color: rgba(var(--luz-clara), 0.85);
 }
 
+/* Contador do mesmo fuso (depois do pouso): números finos, estilo Apple */
+.voo-contador {
+  display: flex;
+  justify-content: center;
+}
+
+.voo-contador-blocos {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(18px, 6vw, 40px);
+}
+
+.voo-contador-bloco {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 3.2ch;
+}
+
+.voo-contador-numero,
+.voo-contador-instantes {
+  font-size: clamp(2.6rem, 11vw, 4rem);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto);
+  text-shadow: 0 0 18px rgba(var(--luz), 0.55), 0 0 42px rgba(var(--luz), 0.25), 0 1px 2px rgba(0, 0, 0, 0.85);
+  animation: contador-troca 0.6s ease-out;
+}
+
+.voo-contador-instantes {
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-style: italic;
+}
+
+.voo-contador-nome {
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(var(--luz-clara), 0.6);
+}
+
+/* o número novo surge de leve, de baixo para cima */
+@keyframes contador-troca {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voo-contador-numero,
+  .voo-contador-instantes {
+    animation: none;
+  }
+}
+
+/* texto só para leitor de tela (invisível na tela) */
+.voo-so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* Faixa de baixo: horários e aviso de estimativa */
 .voo-base {
   bottom: 0;
@@ -315,4 +390,104 @@
   width: 100%;
   height: 100%;
   fill: #ffffff;
+}
+
+/* ---------- Coração de São Paulo (depois do pouso) ----------
+   Dois pontos de luz se aproximam (1,8 s), viram um coraçãozinho e um
+   brilho suave pulsa atrás dele, bem devagar. Só anima transform e
+   opacity, que são leves no iPhone. */
+.mapa-coracao {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.mapa-coracao > * {
+  position: absolute;
+  opacity: 0; /* tudo escondido até o mapa aparecer */
+}
+
+.mapa-coracao-ponto {
+  left: -2.5px;
+  top: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--texto);
+  box-shadow: 0 0 0 2px rgba(var(--luz), 0.3), 0 0 10px 3px rgba(var(--luz), 0.6);
+}
+
+.mapa-coracao-desenho {
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+  fill: #efe3ff;
+  filter: drop-shadow(0 0 3px rgba(var(--luz), 0.9)) drop-shadow(0 0 8px rgba(var(--luz), 0.5));
+}
+
+.mapa-coracao-brilho {
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--luz), 0.55) 0%, rgba(var(--luz), 0.18) 45%, rgba(var(--luz), 0) 70%);
+}
+
+.coracao-ativo .mapa-coracao-ponto-esquerdo {
+  animation: coracao-esquerdo 1.8s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+}
+
+.coracao-ativo .mapa-coracao-ponto-direito {
+  animation: coracao-direito 1.8s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+}
+
+.coracao-ativo .mapa-coracao-desenho {
+  animation: coracao-surge 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 1.55s forwards;
+}
+
+.coracao-ativo .mapa-coracao-brilho {
+  animation: coracao-pulsa 4s ease-in-out 2s infinite both;
+}
+
+@keyframes coracao-esquerdo {
+  0%   { opacity: 0; transform: translateX(-18px); }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(0); }
+}
+
+@keyframes coracao-direito {
+  0%   { opacity: 0; transform: translateX(18px); }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(0); }
+}
+
+@keyframes coracao-surge {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes coracao-pulsa {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 0.85; transform: scale(1.15); }
+}
+
+/* "Reduzir movimento": o coração já aparece pronto, com um brilho parado */
+@media (prefers-reduced-motion: reduce) {
+  .coracao-ativo .mapa-coracao-ponto-esquerdo,
+  .coracao-ativo .mapa-coracao-ponto-direito {
+    animation: none;
+  }
+  .coracao-ativo .mapa-coracao-desenho {
+    animation: none;
+    opacity: 1;
+  }
+  .coracao-ativo .mapa-coracao-brilho {
+    animation: none;
+    opacity: 0.6;
+  }
 }

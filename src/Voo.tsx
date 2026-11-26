@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useMotionValueEvent, useReducedMotion, useScroll, useSpring } from 'motion/react'
 import Nevoa from './Nevoa'
 import { CONTINENTES, GRADE, LISBOA, ROTA, VIRACOPOS } from './mapa'
-import { agora, estadoDoVoo, formatarDuracao, type EstadoVoo } from './vooTempo'
+import { agora, estadoDoVoo, formatarDuracao, fraseJuntos, tempoJuntos, unidade, type EstadoVoo } from './vooTempo'
 import {
   TOTAL_PONTOS,
   areaDaRota,
@@ -40,8 +40,9 @@ const FOLGA_LATERAL = 28
 const FOLGA_NOME_LISBOA = 110
 const FOLGA_NOME_SAO_PAULO = 24
 const FOLGA_TEXTO = 20
-// Tamanho da área em volta de Lisboa no começo (unidades do mapa)
+// Tamanho da área em volta de Lisboa no começo e de São Paulo depois do pouso (unidades do mapa)
 const RAIO_LISBOA = 70
+const RAIO_SAO_PAULO = 60
 
 // ---------- Rota ----------
 
@@ -62,7 +63,7 @@ function tracadoPercorrido(progresso: number) {
 // Onde a câmera termina, conforme o estado do voo
 function areaFinal(estado: EstadoVoo): Area {
   if (estado.fase === 'antes') return areaDaRota(0, 0.25) // de volta a Lisboa, com o começo da rota
-  if (estado.fase === 'depois') return areaDaRota(0.78, 1) // São Paulo
+  if (estado.fase === 'depois') return areaEmVolta(VIRACOPOS, RAIO_SAO_PAULO) // São Paulo no centro, sem a rota
   return areaDaRota(estado.progresso - 0.3, estado.progresso + 0.3) // em volta do avião, com costa à vista
 }
 
@@ -87,21 +88,30 @@ function useTamanho(ref: RefObject<HTMLElement | null>, inicial: Tela): Tela {
 // ---------- Relógio ----------
 
 // Recalcula o horário ao abrir, ao voltar para o app (depois de ficar em
-// segundo plano) e a cada 15 segundos. Não depende do app ficar aberto:
-// a posição sai sempre da conta com o relógio.
+// segundo plano), a cada 15 segundos e bem na virada de cada minuto (para o
+// contador do mesmo fuso trocar na hora certa). Não depende do app ficar
+// aberto: a posição sai sempre da conta com o relógio.
 function useRelogio(): number {
   const [instante, setInstante] = useState(agora)
   useEffect(() => {
+    let relogio = 0
     const atualizar = () => setInstante(agora())
+    const proximo = () => {
+      const ateVirarMinuto = 60000 - (agora() % 60000) + 20
+      relogio = window.setTimeout(() => {
+        atualizar()
+        proximo()
+      }, Math.min(15000, ateVirarMinuto))
+    }
+    proximo()
     const aoVoltar = () => {
       if (!document.hidden) atualizar()
     }
-    const relogio = setInterval(atualizar, 15000)
     document.addEventListener('visibilitychange', aoVoltar)
     window.addEventListener('pageshow', atualizar)
     window.addEventListener('focus', atualizar)
     return () => {
-      clearInterval(relogio)
+      clearTimeout(relogio)
       document.removeEventListener('visibilitychange', aoVoltar)
       window.removeEventListener('pageshow', atualizar)
       window.removeEventListener('focus', atualizar)
@@ -123,10 +133,48 @@ function textos(estado: EstadoVoo) {
     }
   }
   return {
-    rotulo: 'São Paulo',
-    principal: 'A distância chegou ao fim.',
-    legenda: 'Agora, o oceano já não está entre nós.',
+    rotulo: 'No mesmo fuso há',
+    principal: null, // no lugar da frase, entra o contador
+    legenda: 'No mesmo lugar desde o pouso.',
   }
+}
+
+// ---------- Contador do mesmo fuso (depois do pouso) ----------
+
+// Números grandes com o nome da unidade embaixo. Os zeros da frente somem
+// (1 hora depois do pouso mostra só horas e minutos). O leitor de tela lê a
+// frase inteira, sem anunciar de novo a cada minuto.
+function Contador({ instante }: { instante: number }) {
+  const tempo = tempoJuntos(instante)
+  const { dias, horas, minutos } = tempo
+  const blocos = [
+    { valor: dias, nome: unidade(dias, 'dia', 'dias') },
+    { valor: horas, nome: unidade(horas, 'hora', 'horas') },
+    { valor: minutos, nome: unidade(minutos, 'minuto', 'minutos') },
+  ]
+  const primeiro = blocos.findIndex((b) => b.valor > 0)
+  return (
+    <div className="voo-contador">
+      <span className="voo-so-leitor">{fraseJuntos(tempo)}</span>
+      {primeiro === -1 ? (
+        <p className="voo-contador-instantes" aria-hidden="true">
+          instantes
+        </p>
+      ) : (
+        <div className="voo-contador-blocos" aria-hidden="true">
+          {blocos.slice(primeiro).map((b, i) => (
+            <div key={b.nome.replace(/s$/, '')} className="voo-contador-bloco">
+              {/* a chave muda junto com o número: ele entra com uma transição suave */}
+              <span key={b.valor} className="voo-contador-numero">
+                {i === 0 ? b.valor : String(b.valor).padStart(2, '0')}
+              </span>
+              <span className="voo-contador-nome">{b.nome}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ---------- Desenhos ----------
@@ -140,13 +188,31 @@ function Aviao() {
   )
 }
 
-// comAviao: o avião está parado neste marcador; o nome se afasta para não ficar embaixo da asa
-type PropsMarcador = { nome: string; comAviao: boolean; ref: RefObject<HTMLDivElement | null> }
+// Depois do pouso: dois pontos de luz se aproximam em São Paulo e viram um
+// pequeno coração, com um brilho que pulsa devagar. A animação só começa
+// quando o mapa aparece (classe "coracao-ativo", posta na camada do mapa).
+function Coracao() {
+  return (
+    <span className="mapa-coracao" aria-hidden="true">
+      <span className="mapa-coracao-brilho" />
+      <span className="mapa-coracao-ponto mapa-coracao-ponto-esquerdo" />
+      <span className="mapa-coracao-ponto mapa-coracao-ponto-direito" />
+      <svg className="mapa-coracao-desenho" viewBox="0 0 24 24">
+        <path d="M12 21s-7.5-4.6-10-9.3C.3 8.4 1.7 4.3 5.3 3.2 8 2.4 10.4 3.7 12 6c1.6-2.3 4-3.6 6.7-2.8 3.6 1.1 5 5.2 3.3 8.5C19.5 16.4 12 21 12 21Z" />
+      </svg>
+    </span>
+  )
+}
 
-function Marcador({ nome, comAviao, ref }: PropsMarcador) {
+// comAviao: o avião (ou o coração, depois do pouso) está neste marcador;
+// o nome se afasta para não ficar embaixo dele.
+// coracao: no lugar do ponto de luz, mostra o coração.
+type PropsMarcador = { nome: string; comAviao: boolean; coracao?: boolean; ref: RefObject<HTMLDivElement | null> }
+
+function Marcador({ nome, comAviao, coracao = false, ref }: PropsMarcador) {
   return (
     <div ref={ref} className={comAviao ? 'mapa-marcador com-aviao' : 'mapa-marcador'}>
-      <span className="mapa-marcador-ponto" />
+      {coracao ? <Coracao /> : <span className="mapa-marcador-ponto" />}
       <span className="mapa-marcador-nome">{nome}</span>
     </div>
   )
@@ -297,6 +363,10 @@ function Voo() {
       const mascaraBase = alturaBase * Math.min(1, opTextos * 4)
       camada.current?.style.setProperty('--mascara-topo', `${Math.round(mascaraTopo)}px`)
       camada.current?.style.setProperty('--mascara-base', `${Math.round(mascaraBase)}px`)
+
+      // depois do pouso: os pontos começam a se juntar quando o mapa aparece
+      // (uma vez só: a classe não sai mais, e o coração fica)
+      if (fase === 'depois' && opTextos > 0.5) camada.current?.classList.add('coracao-ativo')
     },
     [quadros, tela, aviao, alturaFrase, alturaTopo, alturaBase, fase],
   )
@@ -310,7 +380,7 @@ function Voo() {
       ? 'Mapa da rota de Lisboa a São Paulo. O avião aguarda em Lisboa.'
       : fase === 'durante'
         ? `Mapa da rota de Lisboa a São Paulo. Pela estimativa dos horários, o avião está a ${Math.round(progresso * 100)}% do caminho.`
-        : 'Mapa da rota de Lisboa a São Paulo. O avião está em São Paulo.'
+        : 'Mapa de São Paulo. Um pequeno coração de luz marca São Paulo.'
 
   return (
     <section ref={secao} className="voo" aria-label="A viagem">
@@ -334,22 +404,28 @@ function Voo() {
 
         {/* rota, marcadores e avião (camada leve) */}
         <div ref={camada} className="mapa-camada" role="img" aria-label={descricao}>
-          <svg ref={svgRota} className="mapa-svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            {/* rota que falta: fina e apagada, com halo bem leve */}
-            <path className="mapa-rota mapa-rota-futura-halo" d={TRACADO_COMPLETO} />
-            <path className="mapa-rota mapa-rota-futura" d={TRACADO_COMPLETO} />
-            {/* trecho percorrido: mais luminoso */}
-            <path className="mapa-rota mapa-rota-feita-halo-largo" d={tracadoPercorrido(progresso)} />
-            <path className="mapa-rota mapa-rota-feita-halo" d={tracadoPercorrido(progresso)} />
-            <path className="mapa-rota mapa-rota-feita" d={tracadoPercorrido(progresso)} />
-          </svg>
+          {/* depois do pouso, a rota sai de cena */}
+          {fase !== 'depois' && (
+            <svg ref={svgRota} className="mapa-svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              {/* rota que falta: fina e apagada, com halo bem leve */}
+              <path className="mapa-rota mapa-rota-futura-halo" d={TRACADO_COMPLETO} />
+              <path className="mapa-rota mapa-rota-futura" d={TRACADO_COMPLETO} />
+              {/* trecho percorrido: mais luminoso */}
+              <path className="mapa-rota mapa-rota-feita-halo-largo" d={tracadoPercorrido(progresso)} />
+              <path className="mapa-rota mapa-rota-feita-halo" d={tracadoPercorrido(progresso)} />
+              <path className="mapa-rota mapa-rota-feita" d={tracadoPercorrido(progresso)} />
+            </svg>
+          )}
 
           <Marcador ref={marcadorLisboa} nome="Lisboa" comAviao={fase === 'antes'} />
-          <Marcador ref={marcadorSaoPaulo} nome="São Paulo" comAviao={fase === 'depois'} />
+          <Marcador ref={marcadorSaoPaulo} nome="São Paulo" comAviao={fase === 'depois'} coracao={fase === 'depois'} />
 
-          <div ref={aviaoRef} className="mapa-aviao">
-            <Aviao />
-          </div>
+          {/* depois do pouso, o avião sai de cena e fica o coração */}
+          {fase !== 'depois' && (
+            <div ref={aviaoRef} className="mapa-aviao">
+              <Aviao />
+            </div>
+          )}
         </div>
 
         <div ref={veu} className="voo-veu" aria-hidden="true" />
@@ -363,8 +439,10 @@ function Voo() {
         )}
 
         <header ref={topo} className="voo-topo">
-          <p className="voo-rotulo">{rotulo}</p>
-          <p className="voo-principal">{principal}</p>
+          <p className="voo-rotulo" aria-hidden={fase === 'depois' ? true : undefined}>
+            {rotulo}
+          </p>
+          {fase === 'depois' ? <Contador instante={instante} /> : <p className="voo-principal">{principal}</p>}
           {legenda && <p className="voo-legenda">{legenda}</p>}
         </header>
 

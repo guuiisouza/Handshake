@@ -36,6 +36,37 @@ export function formatarDuracao(ms: number): string {
   return `${minutos}min`
 }
 
+// ---------- Depois do pouso: tempo no mesmo fuso ----------
+// Conta a partir do pouso PREVISTO (16:20 em São Paulo), arredondando os
+// minutos para baixo: só vira o minuto quando ele se completa.
+export type TempoJuntos = { dias: number; horas: number; minutos: number }
+
+export function tempoJuntos(agora: number): TempoJuntos {
+  const totalMinutos = Math.max(Math.floor((agora - CHEGADA) / 60000), 0)
+  return {
+    dias: Math.floor(totalMinutos / 1440),
+    horas: Math.floor((totalMinutos % 1440) / 60),
+    minutos: totalMinutos % 60,
+  }
+}
+
+// Palavra no singular ou plural: 1 dia, 2 dias
+export function unidade(valor: number, singular: string, plural: string): string {
+  return valor === 1 ? singular : plural
+}
+
+// "No mesmo fuso há 12 dias, 4 horas e 30 minutos" (os zeros ficam de fora)
+export function fraseJuntos({ dias, horas, minutos }: TempoJuntos): string {
+  const partes = [
+    dias > 0 && `${dias} ${unidade(dias, 'dia', 'dias')}`,
+    horas > 0 && `${horas} ${unidade(horas, 'hora', 'horas')}`,
+    minutos > 0 && `${minutos} ${unidade(minutos, 'minuto', 'minutos')}`,
+  ].filter(Boolean) as string[]
+  if (partes.length === 0) return 'No mesmo fuso há instantes'
+  const lista = partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
+  return `No mesmo fuso há ${lista}`
+}
+
 // ---------- Teste pelo endereço (substitui o antigo MODO_TESTE) ----------
 // Só funciona no servidor de teste (npm run dev). No site publicado,
 // import.meta.env.DEV é false e o endereço é ignorado: não tem como esquecer ligado.
@@ -43,6 +74,7 @@ export function formatarDuracao(ms: number): string {
 //   ?voo=durante → 45% do trajeto
 //   ?voo=0.8     → 80% do trajeto (qualquer número de 0 a 1)
 //   ?voo=depois  → 1 hora depois do pouso
+//   ?voo=juntos  → 12 dias, 4h e 30min depois do pouso (contador cheio)
 export function horaDeTeste(): number | null {
   if (!import.meta.env.DEV) return null
   const valor = new URLSearchParams(window.location.search).get('voo')
@@ -50,6 +82,7 @@ export function horaDeTeste(): number | null {
   if (valor === 'antes') return PARTIDA - ((8 * 24 + 4) * 60 + 12) * 60000
   if (valor === 'durante') return PARTIDA + DURACAO * 0.45
   if (valor === 'depois') return CHEGADA + 60 * 60000
+  if (valor === 'juntos') return CHEGADA + ((12 * 24 + 4) * 60 + 30) * 60000
   const numero = Number(valor)
   if (Number.isFinite(numero)) return PARTIDA + DURACAO * Math.min(Math.max(numero, 0), 1)
   return null
